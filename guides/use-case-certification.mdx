@@ -1,0 +1,147 @@
+---
+title: "Use Case: Human Certification"
+description: Issue near-zero-FPR attestations of human origin for licensing, royalties, and publishing.
+---
+
+## `press_safe` tier
+
+`press_safe` evaluates `proto_score_v1` against a threshold calibrated at **0% FPR on both clean and hard-negative human tracks**. Use it when a false positive carries reputational or legal consequences: royalty pool submissions, sync licensing, human-only platform ingestion.
+
+| Value | Action |
+|-------|--------|
+| `"human"` | Issue certification |
+| `"suspicious"` | Reject — acoustic evidence of AI origin |
+| `null` | Inconclusive — route to expert review, do not certify |
+
+## Flow
+
+```
+Track submitted
+     │
+     ▼
+Analyze with HumanStandard
+     │
+     ▼
+┌────────────────────────┐
+│ tier_verdicts.press_safe│
+└────────────────────────┘
+     │
+     ├── "human"      → ✅ Issue certification
+     ├── "suspicious" → ❌ Reject / flag as AI-origin
+     └── null         → ⚠️  Inconclusive → escalate to human expert review
+```
+
+## Implementation
+
+```python Python
+import requests, os
+
+def certify_track(audio_url: str) -> dict:
+    result = requests.post(
+        "https://app.jobsbyhumans.com/api/v1/analyze",
+        headers={"Authorization": f"Bearer {os.environ['HS_API_KEY']}"},
+        json={"url": audio_url}
+    ).json()
+
+    press_safe = (result.get("tier_verdicts") or {}).get("press_safe")
+    proto_score = (result.get("scores") or {}).get("proto_score_v1")
+
+    if press_safe == "human":
+        return {
+            "decision": "certified",
+            "confidence": "press-safe",
+            "proto_score": proto_score,
+            "message": "Acoustic evidence consistent with human origin at press-safe confidence."
+        }
+    elif press_safe == "suspicious":
+        return {
+            "decision": "rejected",
+            "confidence": "press-safe",
+            "proto_score": proto_score,
+            "origin": result.get("origin"),
+            "message": "Acoustic evidence of AI-generated origin detected."
+        }
+    else:
+        # null — inconclusive at press-safe level
+        human_safe = (result.get("tier_verdicts") or {}).get("human_safe")
+        return {
+            "decision": "review",
+            "confidence": "inconclusive",
+            "human_safe_verdict": human_safe,
+            "proto_score": proto_score,
+            "message": "Insufficient acoustic evidence at press-safe threshold. Expert review required."
+        }
+```
+
+```typescript TypeScript
+interface CertificationResult {
+  decision: "certified" | "rejected" | "review";
+  confidence: string;
+  proto_score: number | null;
+  message: string;
+}
+
+async function certifyTrack(audioUrl: string): Promise<CertificationResult> {
+  const result = await fetch("https://app.jobsbyhumans.com/api/v1/analyze", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${process.env.HS_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ url: audioUrl }),
+  }).then(r => r.json());
+
+  const pressSafe = result.tier_verdicts?.press_safe;
+  const protoScore = result.scores?.proto_score_v1;
+
+  if (pressSafe === "human") {
+    return {
+      decision: "certified",
+      confidence: "press-safe",
+      proto_score: protoScore,
+      message: "Acoustic evidence consistent with human origin at press-safe confidence.",
+    };
+  } else if (pressSafe === "suspicious") {
+    return {
+      decision: "rejected",
+      confidence: "press-safe",
+      proto_score: protoScore,
+      message: "Acoustic evidence of AI-generated origin detected.",
+    };
+  } else {
+    return {
+      decision: "review",
+      confidence: "inconclusive",
+      proto_score: protoScore,
+      message: "Insufficient evidence at press-safe threshold. Expert review required.",
+    };
+  }
+}
+```
+
+## What to include in a certification report
+
+When issuing a human-origin certificate, include:
+
+| Field | Value |
+|-------|-------|
+| `confidence_tier` | `"press-safe"` |
+| `proto_score_v1` | e.g. `0.21` |
+| `calibration_version` | e.g. `"clairity-bench-2026-01-12"` |
+| `processed_at` | ISO timestamp |
+| `origin` | `"human"` (or `null`) |
+
+This creates an auditable chain: which version of the model made the call, at what threshold, and with what score.
+
+## Handling `null` press-safe (expert review)
+
+When press-safe is `null`, `proto_score_v1` did not reach the press-safe threshold — not enough acoustic evidence to certify either way. Recommended actions:
+
+1. Check `human_safe` — if that's also `"human"`, the track is probably fine but just didn't meet press-safe's strict threshold
+2. Review the `risk_series` — look for sections with elevated AI probability
+3. Route to a human expert with the full signal report
+4. Optionally: request the artist provide session files or DAW project for verification
+
+<Warning>
+  Do not certify tracks where `press_safe` is `null`. Issue certification only on explicit `"human"` verdicts at this tier.
+</Warning>

@@ -1,97 +1,57 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
+title: HumanStandard API
+description: Acoustic evidence for human-origin music — at scale.
 ---
 
-## Setting up
+## What is HumanStandard?
 
-Get your documentation site up and running in minutes.
+HumanStandard analyzes music tracks using an ensemble of acoustic detection models and returns structured evidence: a verdict, a full set of per-head signals, and a secondary acoustic score that is stable across compression and mastering variation.
 
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
-</Card>
+Results include **three simultaneous confidence tiers** so you can tune the tradeoff between detection rate and false positives for your specific policy.
 
-## Make it yours
+## What you can build
 
-Design a docs site that looks great and empowers your users.
-
-<Columns cols={2}>
+<CardGroup cols={2}>
   <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
+    title="Human Certification"
+    icon="certificate"
+    href="/guides/use-case-certification"
   >
-    Edit your docs locally and preview them in real time.
+    Issue press-safe verdicts at ~0% FPR. Attach `proto_score_v1` and `calibration_version` to licensing submissions, royalty claims, and artist certification records.
   </Card>
   <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
+    title="Supply Chain Filtering"
+    icon="filter"
+    href="/guides/use-case-supply-chain"
   >
-    Customize the design and colors of your site to match your brand.
-  </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
+    Block AI-generated content at intake. Route borderline tracks to human review using tiered escalation logic.
   </Card>
   <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
+    title="Bulk Catalog Scanning"
+    icon="database"
+    href="/guides/bulk-jobs"
   >
-    Auto-generate API documentation from OpenAPI specifications.
-  </Card>
-</Columns>
-
-## Create beautiful pages
-
-Everything you need to create world-class documentation.
-
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
+    Submit thousands of tracks as a batch job. Receive results via webhook as they complete, with full per-track evidence.
   </Card>
   <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
+    title="Single Track Analysis"
+    icon="waveform-lines"
+    href="/api-reference/tracks/analyze"
   >
-    Add sample code to demonstrate how to use your product.
+    Analyze a single track on demand. Returns synchronously with the full result payload.
   </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
-  </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
-  </Card>
-</Columns>
+</CardGroup>
 
-## Need inspiration?
+## Core concepts
 
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
-</Card>
+<CardGroup cols={3}>
+  <Card title="Confidence Tiers" icon="layer-group" href="/guides/confidence-tiers">
+    Three operating thresholds — press-safe, human-safe, and recall — each with a different false positive rate tradeoff.
+  </Card>
+  <Card title="Signal Reference" icon="chart-bar" href="/guides/signal-reference">
+    What every score in the response means and how to interpret it.
+  </Card>
+  <Card title="Reading Results" icon="magnifying-glass-chart" href="/guides/reading-results">
+    How to parse a result payload and build policy logic on top of it.
+  </Card>
+</CardGroup>

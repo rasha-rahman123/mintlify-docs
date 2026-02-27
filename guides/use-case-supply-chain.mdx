@@ -1,0 +1,217 @@
+---
+title: "Use Case: Supply Chain Filtering"
+description: Block AI-generated content at intake, with tiered escalation to human review.
+---
+
+## Tiered escalation
+
+Use all three tiers to route tracks into three lanes automatically. `human_safe` auto-rejects high-confidence AI; `recall` catches borderline cases and sends them to human review; everything else passes.
+
+```
+Track arrives at intake
+          │
+          ▼
+  Analyze with HumanStandard
+          │
+          ▼
+  ┌─────────────────────────────┐
+  │ Check human_safe tier first │
+  └─────────────────────────────┘
+          │
+          ├── "suspicious" ──► ❌ Auto-reject
+          │                      (high confidence AI, ~1-2% FPR)
+          │
+          └── "human" ──────► Check recall tier
+                                    │
+                                    ├── "suspicious" ──► 🔍 Manual review queue
+                                    │                      (borderline — human expert decides)
+                                    │
+                                    └── "human" ──────► ✅ Approve
+                                                          (passes all tiers)
+```
+
+This gives you three outcomes:
+1. **Auto-reject** — strong AI evidence, no human review needed
+2. **Manual review** — borderline, needs a human to look
+3. **Approve** — passes all tiers, admitted to catalog
+
+## Implementation
+
+```python Python
+import requests, os
+from enum import Enum
+
+class IntakeDecision(str, Enum):
+    APPROVE = "approve"
+    MANUAL_REVIEW = "manual_review"
+    REJECT = "reject"
+
+def evaluate_intake(audio_url: str, item_id: str) -> dict:
+    result = requests.post(
+        "https://app.jobsbyhumans.com/api/v1/analyze",
+        headers={"Authorization": f"Bearer {os.environ['HS_API_KEY']}"},
+        json={"url": audio_url}
+    ).json()
+
+    if result.get("status") == "failed":
+        # Analysis failed — send to manual review, don't auto-reject
+        return {
+            "item_id": item_id,
+            "decision": IntakeDecision.MANUAL_REVIEW,
+            "reason": "analysis_failed",
+            "error": result.get("error"),
+        }
+
+    tier = result.get("tier_verdicts") or {}
+    scores = result.get("scores") or {}
+
+    human_safe = tier.get("human_safe")
+    recall = tier.get("recall")
+
+    if human_safe == "suspicious":
+        # High confidence AI — auto-reject
+        return {
+            "item_id": item_id,
+            "decision": IntakeDecision.REJECT,
+            "reason": "human_safe_suspicious",
+            "truth_score": scores.get("truth_score"),
+            "geo_score": scores.get("geo_score"),
+            "origin": result.get("origin"),
+        }
+
+    if recall == "suspicious":
+        # Borderline — route to human review
+        return {
+            "item_id": item_id,
+            "decision": IntakeDecision.MANUAL_REVIEW,
+            "reason": "recall_suspicious_borderline",
+            "truth_score": scores.get("truth_score"),
+            "geo_score": scores.get("geo_score"),
+            "risk_series": result.get("risk_series"),
+        }
+
+    # Passes all tiers — approve
+    return {
+        "item_id": item_id,
+        "decision": IntakeDecision.APPROVE,
+        "truth_score": scores.get("truth_score"),
+    }
+```
+
+```typescript TypeScript
+type IntakeDecision = "approve" | "manual_review" | "reject";
+
+interface IntakeResult {
+  item_id: string;
+  decision: IntakeDecision;
+  reason?: string;
+  truth_score?: number | null;
+  geo_score?: number | null;
+  origin?: string | null;
+  risk_series?: number[];
+}
+
+async function evaluateIntake(audioUrl: string, itemId: string): Promise<IntakeResult> {
+  const result = await fetch("https://app.jobsbyhumans.com/api/v1/analyze", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${process.env.HS_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ url: audioUrl }),
+  }).then(r => r.json());
+
+  if (result.status === "failed") {
+    return { item_id: itemId, decision: "manual_review", reason: "analysis_failed" };
+  }
+
+  const tier = result.tier_verdicts ?? {};
+  const scores = result.scores ?? {};
+
+  if (tier.human_safe === "suspicious") {
+    return {
+      item_id: itemId,
+      decision: "reject",
+      reason: "human_safe_suspicious",
+      truth_score: scores.truth_score,
+      geo_score: scores.geo_score,
+      origin: result.origin,
+    };
+  }
+
+  if (tier.recall === "suspicious") {
+    return {
+      item_id: itemId,
+      decision: "manual_review",
+      reason: "recall_suspicious_borderline",
+      truth_score: scores.truth_score,
+      geo_score: scores.geo_score,
+      risk_series: result.risk_series,
+    };
+  }
+
+  return {
+    item_id: itemId,
+    decision: "approve",
+    truth_score: scores.truth_score,
+  };
+}
+```
+
+## What to show human reviewers
+
+When a track lands in manual review, surface the key signals so reviewers can make fast, informed decisions:
+
+| Signal | What to show | What it means |
+|--------|-------------|---------------|
+| `truth_score` | Score bar 0–1 | Overall AI probability |
+| `risk_series` | Waveform heatmap | Which sections triggered the detector |
+| `origin` | Badge | Predicted generator (if any) |
+| `head_a`, `head_b`, `head_c` | Mini bars | CNN, Fourier, Temporal signals |
+| `geo_score` | Score | Stable secondary score — less affected by mastering/compression |
+| `tier_verdicts.recall` | `"suspicious"` | Why it landed in review |
+
+## Bulk intake pipeline
+
+For high-volume intake, use jobs with webhooks:
+
+```python Python
+def submit_intake_batch(tracks: list[dict]) -> str:
+    """Submit a batch for analysis. Returns job_id."""
+    job = requests.post(
+        "https://app.jobsbyhumans.com/api/v1/jobs",
+        headers={"Authorization": f"Bearer {os.environ['HS_API_KEY']}"},
+        json={
+            "name": f"Intake {datetime.utcnow().date()}",
+            "items": [
+                {"item_id": t["id"], "url": t["url"]}
+                for t in tracks
+            ],
+            "webhook_url": "https://yourapi.com/webhooks/hs",
+        }
+    ).json()
+    return job["id"]
+
+# In your webhook handler:
+def handle_track_complete(event: dict):
+    result = event  # track.complete payload
+    decision = evaluate_intake_from_result(result)
+    update_track_status(result["item_id"], decision)
+```
+
+## Tuning the policy
+
+The two-tier escalation above is a starting point. You can adjust based on your catalog's risk tolerance:
+
+**Stricter (fewer false negatives, more manual review)**:
+- Move the auto-reject line to `recall` instead of `human_safe`
+- Add a `geo_score >= 0.5` secondary check before approving
+
+**More permissive (less manual review, more false negatives)**:
+- Only auto-reject when `press_safe == "suspicious"`
+- Use `human_safe` for flagging without rejecting
+- Require `origin != null` before auto-rejecting
+
+<Tip>
+  Start with the two-tier escalation above, run it for a few weeks, and measure your manual review queue's outcome distribution. If reviewers are overturning too many auto-rejects, raise the threshold. If they're mostly confirming AI, you can safely automate more.
+</Tip>

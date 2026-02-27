@@ -1,33 +1,63 @@
 ---
-title: 'Introduction'
-description: 'Example section for showcasing API endpoints'
+title: API Overview
+description: Base URL, authentication, rate limits, and response format.
 ---
 
-<Note>
-  If you're not looking to build API reference documentation, you can delete
-  this section by removing the api-reference folder.
-</Note>
+## Base URL
 
-## Welcome
-
-There are two ways to build API documentation: [OpenAPI](https://mintlify.com/docs/api-playground/openapi/setup) and [MDX components](https://mintlify.com/docs/api-playground/mdx/configuration). For the starter kit, we are using the following OpenAPI specification.
-
-<Card
-  title="Plant Store Endpoints"
-  icon="leaf"
-  href="https://github.com/mintlify/starter/blob/main/api-reference/openapi.json"
->
-  View the OpenAPI specification file
-</Card>
+```
+https://app.jobsbyhumans.com/api/v1
+```
 
 ## Authentication
 
-All API endpoints are authenticated using Bearer tokens and picked up from the specification file.
+All requests require a Bearer token:
+
+```http
+Authorization: Bearer YOUR_API_KEY
+```
+
+Create and manage keys at [secure.hsverify.com/settings/api-keys](https://secure.hsverify.com/settings/api-keys).
+
+## Response format
+
+All responses are JSON. Errors follow a consistent shape:
 
 ```json
-"security": [
-  {
-    "bearerAuth": []
-  }
-]
+{
+  "error": "unauthorized",
+  "message": "Invalid or missing API key"
+}
 ```
+
+## HTTP status codes
+
+| Code | Meaning |
+|------|---------|
+| `200` | Success |
+| `400` | Bad request — check your payload |
+| `401` | Unauthorized — invalid API key |
+| `404` | Not found |
+| `422` | Validation error — see `message` for details |
+| `429` | Rate limit exceeded |
+| `500` | Server error — retry with backoff |
+
+## Rate limits
+
+Rate limit headers are included in every response:
+
+```http
+X-RateLimit-Limit: 60
+X-RateLimit-Remaining: 47
+X-RateLimit-Reset: 1740657600
+```
+
+## Idempotency
+
+For job creation, pass an `Idempotency-Key` header to safely retry failed requests:
+
+```http
+Idempotency-Key: my-unique-batch-2026-02-27
+```
+
+Repeated requests with the same key return the original response without creating a duplicate job.

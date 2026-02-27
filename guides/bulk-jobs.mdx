@@ -1,0 +1,150 @@
+---
+title: Bulk Jobs
+description: Scan thousands of tracks asynchronously with a single API call.
+---
+
+## Overview
+
+A **Job** is a batch of tracks that HumanStandard processes asynchronously. You submit a list of URLs (or file IDs), and we return results via webhook as each track completes — no polling required.
+
+Jobs are ideal for:
+- Scanning a backlog or existing catalog
+- Nightly ingestion pipelines
+- Supply chain review queues
+
+## Creating a job
+
+```http
+POST https://app.jobsbyhumans.com/api/v1/jobs
+Authorization: Bearer YOUR_API_KEY
+Content-Type: application/json
+```
+
+```json
+{
+  "name": "Q1 Catalog Scan",
+  "items": [
+    { "item_id": "track-001", "url": "https://cdn.example.com/01.mp3" },
+    { "item_id": "track-002", "url": "https://cdn.example.com/02.mp3" },
+    { "item_id": "track-003", "url": "https://cdn.example.com/03.mp3" }
+  ],
+  "webhook_url": "https://yourapi.com/webhooks/humanstandard"
+}
+```
+
+<CodeGroup>
+```python Python
+import requests, os
+
+job = requests.post(
+    "https://app.jobsbyhumans.com/api/v1/jobs",
+    headers={"Authorization": f"Bearer {os.environ['HS_API_KEY']}"},
+    json={
+        "name": "Q1 Catalog Scan",
+        "items": [
+            {"item_id": "track-001", "url": "https://cdn.example.com/01.mp3"},
+            {"item_id": "track-002", "url": "https://cdn.example.com/02.mp3"},
+        ],
+        "webhook_url": "https://yourapi.com/webhooks/hs",
+    }
+).json()
+
+print(job["id"])  # job_abc123
+print(job["status"])  # "queued"
+```
+
+```typescript TypeScript
+const job = await fetch("https://app.jobsbyhumans.com/api/v1/jobs", {
+  method: "POST",
+  headers: {
+    "Authorization": `Bearer ${process.env.HS_API_KEY}`,
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    name: "Q1 Catalog Scan",
+    items: [
+      { item_id: "track-001", url: "https://cdn.example.com/01.mp3" },
+      { item_id: "track-002", url: "https://cdn.example.com/02.mp3" },
+    ],
+    webhook_url: "https://yourapi.com/webhooks/hs",
+  }),
+}).then(r => r.json());
+
+console.log(job.id);     // job_abc123
+console.log(job.status); // "queued"
+```
+</CodeGroup>
+
+## Job status
+
+Poll or use webhooks to track progress:
+
+```http
+GET https://app.jobsbyhumans.com/api/v1/jobs/{job_id}
+```
+
+```json
+{
+  "id": "job_abc123",
+  "name": "Q1 Catalog Scan",
+  "status": "processing",
+  "total": 100,
+  "processed": 47,
+  "succeeded": 45,
+  "failed": 2,
+  "verdict_counts": {
+    "human": 38,
+    "suspicious": 7
+  },
+  "created_at": "2026-02-27T10:00:00Z",
+  "completed_at": null
+}
+```
+
+## Fetching results
+
+Once the job is complete, retrieve all results:
+
+```http
+GET https://app.jobsbyhumans.com/api/v1/jobs/{job_id}/results
+```
+
+Results are returned as newline-delimited JSON (NDJSON), one record per track. See [Reading Results](/guides/reading-results) for the full record schema.
+
+## Webhook delivery
+
+If you provide a `webhook_url`, we call it when the job completes:
+
+```json
+{
+  "event": "job.complete",
+  "job_id": "job_abc123",
+  "summary": {
+    "total": 100,
+    "succeeded": 98,
+    "failed": 2,
+    "verdict_counts": { "human": 81, "suspicious": 17 }
+  }
+}
+```
+
+Individual track results are available via the results endpoint above, or you can configure **per-track webhooks** to receive a call for each track as it finishes. See [Webhooks](/guides/webhooks).
+
+## Large catalogs
+
+For catalogs over 10,000 tracks, use a **manifest URL** instead of an inline items array:
+
+```json
+{
+  "name": "Full Catalog",
+  "manifest_url": "https://your-storage.com/manifest.ndjson",
+  "webhook_url": "https://yourapi.com/webhooks/hs"
+}
+```
+
+The manifest is a newline-delimited JSON file, one item per line:
+
+```json
+{"item_id": "track-001", "url": "https://cdn.example.com/01.mp3"}
+{"item_id": "track-002", "url": "https://cdn.example.com/02.mp3"}
+```

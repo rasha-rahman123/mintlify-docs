@@ -1,0 +1,47 @@
+---
+title: Get Track
+description: Retrieve a previously analyzed track by ID.
+---
+
+## Endpoint
+
+```http
+GET /tracks/{track_id}
+```
+
+## Example request
+
+```bash
+curl https://app.jobsbyhumans.com/api/v1/tracks/trk_xyz789 \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+## Response
+
+Returns the same result schema as [Analyze Track](/api-reference/tracks/analyze).
+
+```json
+{
+  "id": "trk_xyz789",
+  "status": "success",
+  "verdict": "human",
+  "tier_verdicts": {
+    "press_safe": "human",
+    "human_safe": "human",
+    "recall": "human"
+  },
+  "scores": {
+    "truth_score": 0.08,
+    "geo_score": 0.12,
+    "proto_score_v1": 0.14
+  },
+  "audio": {
+    "duration_sec": 214.3,
+    "bitrate": 320000,
+    "sample_rate": 44100,
+    "channels": 2,
+    "codec": "mp3"
+  },
+  "processed_at": "2026-02-27T10:43:01Z"
+}
+```

@@ -1,0 +1,152 @@
+---
+title: Webhooks
+description: Receive real-time notifications when jobs and tracks complete.
+---
+
+## Overview
+
+HumanStandard sends webhook events to your server when analysis completes. This is the recommended delivery mechanism for production pipelines — no polling needed.
+
+## Configuring webhooks
+
+Set your webhook URL when creating a job:
+
+```json
+{
+  "name": "My Scan",
+  "items": [...],
+  "webhook_url": "https://yourapi.com/webhooks/hs"
+}
+```
+
+Or set a default webhook URL for all jobs in **Settings → Integrations → Default Webhook URL**.
+
+## Event types
+
+| Event | Trigger |
+|-------|---------|
+| `job.complete` | All tracks in a job have finished processing |
+| `track.complete` | A single track within a job has finished |
+| `job.failed` | A job-level error occurred (e.g. bad manifest URL) |
+
+## Payload structure
+
+### `job.complete`
+
+```json
+{
+  "event": "job.complete",
+  "job_id": "job_abc123",
+  "job_name": "Q1 Catalog Scan",
+  "completed_at": "2026-02-27T10:47:12Z",
+  "summary": {
+    "total": 100,
+    "succeeded": 98,
+    "failed": 2,
+    "verdict_counts": {
+      "human": 81,
+      "suspicious": 17
+    }
+  }
+}
+```
+
+### `track.complete`
+
+```json
+{
+  "event": "track.complete",
+  "job_id": "job_abc123",
+  "item_id": "track-001",
+  "status": "success",
+  "verdict": "suspicious",
+  "tier_verdicts": {
+    "press_safe": null,
+    "human_safe": "suspicious",
+    "recall": "suspicious"
+  },
+  "scores": {
+    "truth_score": 0.87,
+    "geo_score": 0.79,
+    "proto_score_v1": 0.74,
+    "head_a": 0.91,
+    "head_b": 0.83
+  },
+  "processed_at": "2026-02-27T10:43:01Z"
+}
+```
+
+## Verifying signatures
+
+Every webhook request includes an `X-HS-Signature` header. Always verify this before processing the payload.
+
+<CodeGroup>
+```python Python
+import hmac, hashlib
+from fastapi import FastAPI, Request, HTTPException
+
+app = FastAPI()
+HS_SECRET = os.environ["HS_WEBHOOK_SECRET"]
+
+@app.post("/webhooks/hs")
+async def webhook(request: Request):
+    body = await request.body()
+    sig = request.headers.get("X-HS-Signature", "")
+
+    expected = "sha256=" + hmac.new(
+        HS_SECRET.encode(), body, hashlib.sha256
+    ).hexdigest()
+
+    if not hmac.compare_digest(expected, sig):
+        raise HTTPException(status_code=401, detail="Invalid signature")
+
+    payload = await request.json()
+    handle_event(payload)
+    return {"ok": True}
+```
+
+```typescript TypeScript (Express)
+import express from "express";
+import crypto from "crypto";
+
+const app = express();
+
+app.post(
+  "/webhooks/hs",
+  express.raw({ type: "application/json" }),
+  (req, res) => {
+    const sig = req.headers["x-hs-signature"] as string;
+    const expected = `sha256=${crypto
+      .createHmac("sha256", process.env.HS_WEBHOOK_SECRET!)
+      .update(req.body)
+      .digest("hex")}`;
+
+    if (!crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(sig))) {
+      return res.status(401).json({ error: "Invalid signature" });
+    }
+
+    const payload = JSON.parse(req.body.toString());
+    handleEvent(payload);
+    res.json({ ok: true });
+  }
+);
+```
+</CodeGroup>
+
+## Retries
+
+If your endpoint returns a non-2xx response or times out (>30s), we retry with exponential backoff:
+
+| Attempt | Delay |
+|---------|-------|
+| 1 | Immediate |
+| 2 | 1 minute |
+| 3 | 5 minutes |
+| 4 | 30 minutes |
+| 5 | 2 hours |
+
+After 5 failed attempts, the event is marked as undelivered. You can re-fetch results at any time from the jobs API.
+
+<Tip>
+  Respond with `200 OK` as quickly as possible, then process the payload asynchronously. Webhook handlers that do heavy processing inline risk timing out.
+</Tip>

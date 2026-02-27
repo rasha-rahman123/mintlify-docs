@@ -1,11 +1,11 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "theme": "mint",
-  "name": "Mint Starter Kit",
+  "theme": "sequoia",
+  "name": "HumanStandard",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#151515",
+    "light": "#33FF00",
+    "dark": "#151515"
   },
   "favicon": "/favicon.svg",
   "navigation": {
@@ -14,55 +14,61 @@
         "tab": "Guides",
         "groups": [
           {
-            "group": "Getting started",
+            "group": "Getting Started",
             "pages": [
               "index",
               "quickstart",
-              "development"
+              "authentication"
             ]
           },
           {
-            "group": "Customization",
+            "group": "Submitting Audio",
             "pages": [
-              "essentials/settings",
-              "essentials/navigation"
+              "guides/public-urls",
+              "guides/signed-urls",
+              "guides/bulk-jobs",
+              "guides/webhooks"
             ]
           },
           {
-            "group": "Writing content",
+            "group": "Understanding Results",
             "pages": [
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/reusable-snippets"
+              "guides/reading-results",
+              "guides/confidence-tiers",
+              "guides/signal-reference"
             ]
           },
           {
-            "group": "AI tools",
+            "group": "Use Cases",
             "pages": [
-              "ai-tools/cursor",
-              "ai-tools/claude-code",
-              "ai-tools/windsurf"
+              "guides/use-case-certification",
+              "guides/use-case-supply-chain"
             ]
           }
         ]
       },
       {
-        "tab": "API reference",
+        "tab": "API Reference",
         "groups": [
           {
-            "group": "API documentation",
+            "group": "Overview",
             "pages": [
               "api-reference/introduction"
             ]
           },
           {
-            "group": "Endpoint examples",
+            "group": "Jobs",
             "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
-              "api-reference/endpoint/webhook"
+              "api-reference/jobs/create",
+              "api-reference/jobs/get",
+              "api-reference/jobs/results"
+            ]
+          },
+          {
+            "group": "Tracks",
+            "pages": [
+              "api-reference/tracks/analyze",
+              "api-reference/tracks/get"
             ]
           }
         ]
@@ -71,14 +77,14 @@
     "global": {
       "anchors": [
         {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
+          "anchor": "Dashboard",
+          "href": "https://secure.hsverify.com",
+          "icon": "gauge"
         },
         {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
+          "anchor": "Support",
+          "href": "mailto:support@hsverify.com",
+          "icon": "envelope"
         }
       ]
     }
@@ -90,33 +96,19 @@
   "navbar": {
     "links": [
       {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
+        "label": "Dashboard",
+        "href": "https://secure.hsverify.com"
       }
     ],
     "primary": {
       "type": "button",
-      "label": "Dashboard",
-      "href": "https://dashboard.mintlify.com"
+      "label": "Get API Key",
+      "href": "https://secure.hsverify.com/login"
     }
-  },
-  "contextual": {
-    "options": [
-     "copy",
-     "view",
-     "chatgpt",
-     "claude",
-     "perplexity",
-     "mcp",
-     "cursor",
-     "vscode"
-   ]
   },
   "footer": {
     "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
+      "x": "https://x.com/hsverify"
     }
   }
 }

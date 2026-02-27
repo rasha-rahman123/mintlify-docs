@@ -1,0 +1,153 @@
+---
+title: Reading Results
+description: How to parse a HumanStandard result record and act on it.
+---
+
+## The result record
+
+Every analyzed track returns a result record with this shape:
+
+```json
+{
+  "item_id": "track-001",
+  "url": "https://cdn.example.com/01.mp3",
+  "filename": "01.mp3",
+  "status": "success",
+
+  "verdict": "suspicious",
+  "tier_verdicts": {
+    "press_safe": null,
+    "human_safe": "suspicious",
+    "recall": "suspicious"
+  },
+
+  "scores": {
+    "truth_score": 0.87,
+    "geo_score": 0.79,
+    "proto_score_v1": 0.74,
+    "geometry_fused_score": 0.81,
+    "head_a": 0.91,
+    "head_b": 0.83,
+    "head_c": 0.77,
+    "head_d": 0.68,
+    "head_e": null,
+    "head_i": 0.21,
+    "head_j": 0.09,
+    "head_k": 0.71,
+    "embed_temporal_std": 0.04,
+    "reliability": 0.88
+  },
+
+  "audio": {
+    "duration_sec": 187.4,
+    "bitrate": 320000,
+    "sample_rate": 44100,
+    "channels": 2,
+    "codec": "mp3"
+  },
+
+  "origin": "suno",
+  "origin_confidence": 0.82,
+  "confidence_tier": "human-safe",
+  "policy_decision": "human-safe-suspicious",
+  "calibration_version": "clairity-bench-2026-01-12",
+
+  "risk_series": [0.12, 0.14, 0.88, 0.91, 0.89, 0.87],
+  "processed_at": "2026-02-27T10:43:01Z"
+}
+```
+
+## Field guide
+
+### Top-level verdict
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `verdict` | `"human"` \| `"suspicious"` | Primary verdict at the operating threshold |
+| `tier_verdicts` | object | Verdicts at all three confidence tiers simultaneously |
+| `confidence_tier` | `"press-safe"` \| `"human-safe"` \| `"recall"` | Which tier the operating mode is running at |
+| `policy_decision` | string | Internal label combining tier + verdict, e.g. `"human-safe-suspicious"` |
+
+### Scores
+
+| Field | Description | Range |
+|-------|-------------|-------|
+| `truth_score` | Primary fused score. Near 0 = human, near 1 = AI | 0–1 |
+| `geo_score` | Secondary acoustic score, stable across compression and mastering variation | 0–1 |
+| `proto_score_v1` | Score that drives the press-safe tier. ≥ 0.807 = press-safe fires | 0–1 |
+| `geometry_fused_score` | Internal fusion of `geo_score` and `proto_score_v1` | 0–1 |
+
+### Audio metadata
+
+Standard codec info — useful for filtering low-quality inputs or enforcing minimum bitrate policies.
+
+### Origin attribution
+
+| Field | Description |
+|-------|-------------|
+| `origin` | Predicted generator: `"suno"`, `"udio"`, `"elevenlabs"`, `"human"`, or `"unknown"` |
+| `origin_confidence` | Confidence in the origin prediction (0–1) |
+
+<Note>
+  Origin attribution is a supplemental signal — use it for logging and auditing, not as the primary basis for rejection decisions. Tier verdicts are the authoritative signal.
+</Note>
+
+### Risk series
+
+`risk_series` is a downsampled array (up to 120 values) of per-window AI probability across the track timeline. Use this to visualize *where* in a track AI characteristics appear — useful for identifying mixed tracks or identifying which sections triggered the detector.
+
+```
+0.12  0.14  0.13  ← sounds human
+0.88  0.91  0.89  ← AI-like section detected here
+0.87  0.90  0.88
+```
+
+## Acting on results
+
+### Simple binary decision
+
+```python
+def should_block(record: dict) -> bool:
+    return record["verdict"] == "suspicious"
+```
+
+### Tiered policy (recommended)
+
+```python
+def evaluate(record: dict) -> str:
+    """
+    Returns: "approve" | "flag" | "manual_review"
+    """
+    tier = record.get("tier_verdicts") or {}
+
+    # Highest confidence — near zero false positives
+    if tier.get("press_safe") == "suspicious":
+        return "flag"
+
+    # ~1-2% FPR — good for most intake decisions
+    if tier.get("human_safe") == "suspicious":
+        return "flag"
+
+    # ~5-10% FPR — higher recall, more false positives
+    if tier.get("recall") == "suspicious":
+        return "manual_review"
+
+    return "approve"
+```
+
+See [Use Case: Supply Chain](/guides/use-case-supply-chain) for a complete escalation flow.
+
+## Handling failures
+
+If a track fails to analyze, `status` will be `"failed"` and `verdict` will be `null`:
+
+```json
+{
+  "item_id": "track-005",
+  "status": "failed",
+  "verdict": null,
+  "error": "audio_load_failed: unsupported format"
+}
+```
+
+Always check `status` before reading `verdict`.

@@ -1,0 +1,103 @@
+---
+title: Analyze Track
+description: Analyze a single audio track synchronously.
+---
+
+## Endpoint
+
+```http
+POST /analyze
+```
+
+## Request body
+
+```json
+{
+  "url": "https://your-cdn.com/track.mp3"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `url` | string | Yes* | Publicly accessible audio URL |
+| `file_id` | string | Yes* | File identifier for signed URL resolution |
+
+*Provide either `url` or `file_id`, not both.
+
+## Example request
+
+<CodeGroup>
+```bash cURL
+curl -X POST https://app.jobsbyhumans.com/api/v1/analyze \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://cdn.example.com/track.mp3"}'
+```
+
+```python Python
+import requests, os
+
+result = requests.post(
+    "https://app.jobsbyhumans.com/api/v1/analyze",
+    headers={"Authorization": f"Bearer {os.environ['HS_API_KEY']}"},
+    json={"url": "https://cdn.example.com/track.mp3"}
+).json()
+```
+
+```typescript TypeScript
+const result = await fetch("https://app.jobsbyhumans.com/api/v1/analyze", {
+  method: "POST",
+  headers: {
+    "Authorization": `Bearer ${process.env.HS_API_KEY}`,
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({ url: "https://cdn.example.com/track.mp3" }),
+}).then(r => r.json());
+```
+</CodeGroup>
+
+## Response
+
+```json
+{
+  "status": "success",
+  "verdict": "suspicious",
+  "tier_verdicts": {
+    "press_safe": "suspicious",
+    "human_safe": "suspicious",
+    "recall": "suspicious"
+  },
+  "scores": {
+    "truth_score": 0.91,
+    "geo_score": 0.84,
+    "proto_score_v1": 0.82,
+    "geometry_fused_score": 0.86,
+    "head_a": 0.94,
+    "head_b": 0.88,
+    "head_c": 0.81,
+    "head_d": 0.73,
+    "head_e": null,
+    "head_i": 0.34,
+    "head_j": 0.11,
+    "head_k": 0.79,
+    "embed_temporal_std": 0.03,
+    "reliability": 0.91
+  },
+  "audio": {
+    "duration_sec": 187.4,
+    "bitrate": 320000,
+    "sample_rate": 44100,
+    "channels": 2,
+    "codec": "mp3"
+  },
+  "origin": "suno",
+  "origin_confidence": 0.87,
+  "confidence_tier": "press-safe",
+  "policy_decision": "press-safe-suspicious",
+  "calibration_version": "clairity-bench-2026-01-12",
+  "risk_series": [0.89, 0.92, 0.91, 0.88, 0.94, 0.90],
+  "processed_at": "2026-02-27T10:43:01Z"
+}
+```
+
+See [Reading Results](/guides/reading-results) for field descriptions.

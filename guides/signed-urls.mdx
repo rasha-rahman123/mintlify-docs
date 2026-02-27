@@ -1,0 +1,148 @@
+---
+title: Signed URLs
+description: Analyze private audio without exposing your storage credentials.
+---
+
+## How it works
+
+Configure a **signed URL endpoint** on your organization for private audio (S3, GCS, Azure, private CDN). HumanStandard will:
+
+1. Call your endpoint with the file identifier
+2. Receive a short-lived download URL from you
+3. Download and analyze the audio using that URL
+
+Your actual storage credentials and permanent URLs are never shared.
+
+## Setup
+
+In the dashboard under **Settings → Integrations**, enter:
+
+- **Signed URL Endpoint**: A URL on your server we can POST to (e.g. `https://yourapi.com/internal/signed-url`)
+- **Endpoint Secret**: A secret we include in every request so you can verify it came from us
+
+## How it works
+
+When we need to fetch an audio file, we POST to your endpoint:
+
+```json
+POST https://yourapi.com/internal/signed-url
+X-HS-Secret: your_endpoint_secret
+
+{
+  "file_id": "track_abc123",
+  "job_id": "job_uuid_here"
+}
+```
+
+Your server responds with a temporary URL:
+
+```json
+{
+  "url": "https://your-storage.com/private/track_abc123.mp3?X-Amz-Expires=300&X-Amz-Signature=..."
+}
+```
+
+We download from that URL immediately. The URL only needs to be valid for ~60 seconds.
+
+## Implementation examples
+
+<CodeGroup>
+```python Python (FastAPI)
+from fastapi import FastAPI, Header, HTTPException
+from pydantic import BaseModel
+import boto3, os, hmac, hashlib
+
+app = FastAPI()
+s3 = boto3.client("s3")
+
+HS_SECRET = os.environ["HS_ENDPOINT_SECRET"]
+BUCKET = "your-private-bucket"
+
+class SignedUrlRequest(BaseModel):
+    file_id: str
+    job_id: str
+
+@app.post("/internal/signed-url")
+def get_signed_url(
+    req: SignedUrlRequest,
+    x_hs_secret: str = Header(None)
+):
+    if not hmac.compare_digest(x_hs_secret or "", HS_SECRET):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    url = s3.generate_presigned_url(
+        "get_object",
+        Params={"Bucket": BUCKET, "Key": f"audio/{req.file_id}.mp3"},
+        ExpiresIn=300,  # 5 minutes
+    )
+    return {"url": url}
+```
+
+```typescript TypeScript (Next.js API Route)
+import type { NextApiRequest, NextApiResponse } from "next";
+import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+
+const s3 = new S3Client({ region: "us-east-1" });
+
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (req.headers["x-hs-secret"] !== process.env.HS_ENDPOINT_SECRET) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  const { file_id } = req.body;
+
+  const command = new GetObjectCommand({
+    Bucket: "your-private-bucket",
+    Key: `audio/${file_id}.mp3`,
+  });
+
+  const url = await getSignedUrl(s3, command, { expiresIn: 300 });
+  return res.json({ url });
+}
+```
+
+```typescript TypeScript (Express)
+import express from "express";
+import { Storage } from "@google-cloud/storage";
+
+const app = express();
+const storage = new Storage();
+const bucket = storage.bucket("your-private-bucket");
+
+app.post("/internal/signed-url", express.json(), async (req, res) => {
+  if (req.headers["x-hs-secret"] !== process.env.HS_ENDPOINT_SECRET) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  const { file_id } = req.body;
+  const file = bucket.file(`audio/${file_id}.mp3`);
+
+  const [url] = await file.getSignedUrl({
+    action: "read",
+    expires: Date.now() + 5 * 60 * 1000,  // 5 minutes
+  });
+
+  res.json({ url });
+});
+```
+</CodeGroup>
+
+## Submitting jobs with signed URLs
+
+When submitting a bulk job or single-track analysis, pass the `file_id` instead of a direct URL:
+
+```json
+{
+  "items": [
+    { "item_id": "release-001", "file_id": "track_abc123" },
+    { "item_id": "release-002", "file_id": "track_def456" }
+  ]
+}
+```
+
+We resolve each `file_id` to a signed URL before analysis.
+
+<Note>
+  If no signed URL endpoint is configured, passing a `file_id` returns a `400` error. Configure your endpoint in the dashboard first.
+</Note>

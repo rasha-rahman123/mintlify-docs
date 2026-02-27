@@ -1,0 +1,46 @@
+---
+title: Public URLs
+description: Analyze audio hosted at any publicly accessible URL.
+---
+
+## Overview
+
+The simplest way to submit audio is to provide a public URL. HumanStandard downloads and analyzes the file directly.
+
+Supported formats: `mp3`, `wav`, `flac`, `aac`, `ogg`, `m4a`
+
+## Single track
+
+```json
+POST https://app.jobsbyhumans.com/api/v1/analyze
+
+{
+  "url": "https://your-cdn.com/tracks/song.mp3"
+}
+```
+
+## Bulk job with public URLs
+
+```json
+POST https://app.jobsbyhumans.com/api/v1/jobs
+
+{
+  "name": "Catalog Review",
+  "items": [
+    { "item_id": "track-001", "url": "https://cdn.example.com/01.mp3" },
+    { "item_id": "track-002", "url": "https://cdn.example.com/02.wav" }
+  ],
+  "webhook_url": "https://yourapi.com/webhooks/hs"
+}
+```
+
+## Requirements
+
+- URLs must be reachable from our servers (not `localhost` or internal VPCs)
+- HTTP redirects are followed (up to 3 hops)
+- Files must be downloadable within 60 seconds
+- Max file size: 500 MB
+
+## Private audio
+
+If your audio files require authentication, use [Signed URLs](/guides/signed-urls) instead.

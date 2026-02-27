@@ -1,0 +1,89 @@
+---
+title: Authentication & API Keys
+description: How to create and manage API keys for secure access.
+---
+
+## Creating an API key
+
+1. Log in to [secure.hsverify.com](https://secure.hsverify.com/login)
+2. Go to **Settings → API Keys**
+3. Click **Create API Key**, give it a name (e.g. `production`, `staging`)
+4. Copy the key immediately — it is shown only once
+
+Keys look like: `hs_live_xxxxxxxxxxxxxxxxxxxxxxxx`
+
+## Using your key
+
+Pass your API key as a Bearer token in every request:
+
+```http
+Authorization: Bearer hs_live_xxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+<CodeGroup>
+```python Python
+import os, requests
+
+HEADERS = {"Authorization": f"Bearer {os.environ['HS_API_KEY']}"}
+
+response = requests.post(
+    "https://app.jobsbyhumans.com/api/v1/analyze",
+    headers=HEADERS,
+    json={"url": "https://cdn.example.com/track.mp3"}
+)
+```
+
+```typescript TypeScript
+const HEADERS = {
+  "Authorization": `Bearer ${process.env.HS_API_KEY}`,
+  "Content-Type": "application/json",
+};
+```
+</CodeGroup>
+
+<Warning>
+  Never expose your API key in client-side code, browser environments, or public repositories. Use environment variables or a secrets manager.
+</Warning>
+
+## Managing keys
+
+- **Rotate**: Create a new key, update your services, then delete the old one
+- **Revoke immediately**: Delete a key from the dashboard if it's compromised — it stops working instantly
+- **Multiple keys**: Create separate keys per environment (`production`, `staging`) or per service for easier auditing
+
+## Webhook signatures
+
+When you configure a webhook URL on a job, HumanStandard signs each outbound request with your organization's **webhook secret**. Verify this to ensure the payload came from us:
+
+```python Python
+import hmac, hashlib
+
+def verify_webhook(payload_bytes: bytes, signature_header: str, secret: str) -> bool:
+    expected = hmac.new(
+        secret.encode(),
+        payload_bytes,
+        hashlib.sha256
+    ).hexdigest()
+    return hmac.compare_digest(f"sha256={expected}", signature_header)
+```
+
+```typescript TypeScript
+import crypto from "crypto";
+
+function verifyWebhook(
+  payload: Buffer,
+  signatureHeader: string,
+  secret: string
+): boolean {
+  const expected = `sha256=${crypto
+    .createHmac("sha256", secret)
+    .update(payload)
+    .digest("hex")}`;
+  return crypto.timingSafeEqual(
+    Buffer.from(expected),
+    Buffer.from(signatureHeader)
+  );
+}
+```
+
+The signature is sent in the `X-HS-Signature` header.
