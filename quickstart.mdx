@@ -1,19 +1,19 @@
 ---
 title: Quickstart
-description: Analyze your first track in under 5 minutes.
+description: Analyze your first track in minutes.
 ---
 
 ## 1. Get your API key
 
-Log in to the [HumanStandard dashboard](https://secure.hsverify.com) and navigate to **Settings → API Keys**. Create a new key and copy it — you won't see it again.
+Log in to the [HumanStandard dashboard](https://secure.hsverify.com) and go to **Settings → API Keys**. Create a key and copy it — it's shown once.
 
 <Warning>
-  Keep your API key secret. Do not commit it to source control or expose it in client-side code.
+  Keep your API key secret. Use environment variables, not hardcoded values.
 </Warning>
 
-## 2. Submit a track
+## 2. Analyze a track
 
-The simplest way to analyze a track is to POST a publicly accessible audio URL.
+POST a publicly accessible audio URL:
 
 <CodeGroup>
 ```bash cURL
@@ -24,83 +24,65 @@ curl -X POST https://app.jobsbyhumans.com/api/v1/analyze \
 ```
 
 ```python Python
-import requests
+import requests, os
 
-response = requests.post(
+result = requests.post(
     "https://app.jobsbyhumans.com/api/v1/analyze",
-    headers={"Authorization": "Bearer YOUR_API_KEY"},
+    headers={"Authorization": f"Bearer {os.environ['HS_API_KEY']}"},
     json={"url": "https://your-cdn.com/track.mp3"}
-)
+).json()
 
-result = response.json()
 print(result["verdict"])                # "human" | "suspicious"
-print(result["scores"]["truth_score"])  # 0.0 – 1.0
+print(result["tier_verdicts"])          # per-tier breakdown
 ```
 
 ```typescript TypeScript
-const response = await fetch("https://app.jobsbyhumans.com/api/v1/analyze", {
+const result = await fetch("https://app.jobsbyhumans.com/api/v1/analyze", {
   method: "POST",
   headers: {
     "Authorization": `Bearer ${process.env.HS_API_KEY}`,
     "Content-Type": "application/json",
   },
   body: JSON.stringify({ url: "https://your-cdn.com/track.mp3" }),
-});
+}).then(r => r.json());
 
-const result = await response.json();
 console.log(result.verdict);
-console.log(result.scores.truth_score);
+console.log(result.tier_verdicts);
 ```
 </CodeGroup>
 
-## 3. Read the result
+## 3. Act on the result
 
-```json
-{
-  "status": "success",
-  "verdict": "human",
-  "tier_verdicts": {
-    "press_safe": null,
-    "human_safe": "human",
-    "recall": "human"
-  },
-  "scores": {
-    "truth_score": 0.18,
-    "geo_score": 0.31,
-    "proto_score_v1": 0.29,
-    "head_a": 0.14,
-    "head_b": 0.22,
-    "head_c": 0.19
-  },
-  "audio": {
-    "duration_sec": 214.3,
-    "bitrate": 320000,
-    "sample_rate": 44100,
-    "channels": 2,
-    "codec": "mp3"
-  }
-}
+Route based on `tier_verdicts`:
+
+```python
+tier = result.get("tier_verdicts") or {}
+
+if tier.get("human_safe") == "suspicious":
+    # Reject — high-confidence AI
+elif tier.get("recall") == "suspicious":
+    # Send to manual review — borderline
+else:
+    # Approve
 ```
 
-The top-level `verdict` is your primary signal. A `truth_score` near 0 indicates strong human characteristics; near 1 indicates strong AI characteristics.
-
 <Tip>
-  For production use, rely on `tier_verdicts` rather than the raw `verdict`. The tiers give you calibrated false-positive guarantees. See [Confidence Tiers](/guides/confidence-tiers).
+  Use `tier_verdicts` for routing, not the top-level `verdict`. Each tier is calibrated to a specific false positive rate. See [Confidence Tiers](/guides/confidence-tiers).
 </Tip>
 
 ## Next steps
 
 <CardGroup cols={2}>
   <Card title="Confidence Tiers" icon="layer-group" href="/guides/confidence-tiers">
-    Understand press-safe, human-safe, and recall thresholds.
+    Choose the right threshold for your use case.
+  </Card>
+  <Card title="Supply Chain Filtering" icon="filter" href="/guides/use-case-supply-chain">
+    Full intake routing flow with error handling.
+  </Card>
+  <Card title="Human Certification" icon="certificate" href="/guides/use-case-certification">
+    Issue human-origin attestations for licensing.
   </Card>
   <Card title="Bulk Jobs" icon="database" href="/guides/bulk-jobs">
-    Submit thousands of tracks as a single job.
-  </Card>
-  <Card title="Signed URLs" icon="lock" href="/guides/signed-urls">
-    Keep your audio private using short-lived signed URLs.
-  </Card>
-  <Card title="Signal Reference" icon="chart-bar" href="/guides/signal-reference">
-    Understand every score in the response payload.
+    Scan thousands of tracks as a single job.
   </Card>
 </CardGroup>

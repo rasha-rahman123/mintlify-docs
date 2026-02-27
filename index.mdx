@@ -1,13 +1,9 @@
 ---
 title: HumanStandard API
-description: Acoustic evidence for human-origin music — at scale.
+description: Verify human-origin music at scale.
 ---
 
-## What is HumanStandard?
-
-HumanStandard analyzes music tracks using an ensemble of acoustic detection models and returns structured evidence: a verdict, a full set of per-head signals, and a secondary acoustic score that is stable across compression and mastering variation.
-
-Results include **three simultaneous confidence tiers** so you can tune the tradeoff between detection rate and false positives for your specific policy.
+HumanStandard analyzes audio tracks and returns a structured verdict with confidence tiers, supporting scores, and an audit trail. Integrate it into your intake pipeline, catalog review workflow, or certification process.
 
 ## What you can build
 
@@ -17,21 +13,21 @@ Results include **three simultaneous confidence tiers** so you can tune the trad
     icon="certificate"
     href="/guides/use-case-certification"
   >
-    Issue press-safe verdicts at ~0% FPR. Attach `proto_score_v1` and `calibration_version` to licensing submissions, royalty claims, and artist certification records.
+    Issue near-zero false positive attestations of human origin for licensing submissions, royalty claims, and artist certification records.
   </Card>
   <Card
     title="Supply Chain Filtering"
     icon="filter"
     href="/guides/use-case-supply-chain"
   >
-    Block AI-generated content at intake. Route borderline tracks to human review using tiered escalation logic.
+    Block AI-generated content at intake and route borderline tracks to human review automatically.
   </Card>
   <Card
     title="Bulk Catalog Scanning"
     icon="database"
     href="/guides/bulk-jobs"
   >
-    Submit thousands of tracks as a batch job. Receive results via webhook as they complete, with full per-track evidence.
+    Submit thousands of tracks as a batch job and receive results via webhook as they complete.
   </Card>
   <Card
     title="Single Track Analysis"
@@ -42,16 +38,16 @@ Results include **three simultaneous confidence tiers** so you can tune the trad
   </Card>
 </CardGroup>
 
-## Core concepts
+## Get started
 
 <CardGroup cols={3}>
-  <Card title="Confidence Tiers" icon="layer-group" href="/guides/confidence-tiers">
-    Three operating thresholds — press-safe, human-safe, and recall — each with a different false positive rate tradeoff.
+  <Card title="Quickstart" icon="bolt" href="/quickstart">
+    Make your first API call in minutes.
   </Card>
-  <Card title="Signal Reference" icon="chart-bar" href="/guides/signal-reference">
-    What every score in the response means and how to interpret it.
+  <Card title="Confidence Tiers" icon="layer-group" href="/guides/confidence-tiers">
+    Understand how to route results — approve, reject, or escalate.
   </Card>
   <Card title="Reading Results" icon="magnifying-glass-chart" href="/guides/reading-results">
-    How to parse a result payload and build policy logic on top of it.
+    The full response payload and how to act on it.
   </Card>
 </CardGroup>

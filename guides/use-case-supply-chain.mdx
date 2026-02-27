@@ -167,8 +167,8 @@ When a track lands in manual review, surface the key signals so reviewers can ma
 | `truth_score` | Score bar 0–1 | Overall AI probability |
 | `risk_series` | Waveform heatmap | Which sections triggered the detector |
 | `origin` | Badge | Predicted generator (if any) |
-| `head_a`, `head_b`, `head_c` | Mini bars | CNN, Fourier, Temporal signals |
-| `geo_score` | Score | Stable secondary score — less affected by mastering/compression |
+| `head_a`, `head_b`, `head_c` | Mini bars | Individual detection head scores |
+| `geo_score` | Score | Secondary corroborating score |
 | `tier_verdicts.recall` | `"suspicious"` | Why it landed in review |
 
 ## Bulk intake pipeline
@@ -207,10 +207,9 @@ The two-tier escalation above is a starting point. You can adjust based on your 
 - Move the auto-reject line to `recall` instead of `human_safe`
 - Add a `geo_score >= 0.5` secondary check before approving
 
-**More permissive (less manual review, more false negatives)**:
+**More permissive (less manual review)**:
 - Only auto-reject when `press_safe == "suspicious"`
-- Use `human_safe` for flagging without rejecting
-- Require `origin != null` before auto-rejecting
+- Use `human_safe` to flag for review rather than auto-reject
 
 <Tip>
   Start with the two-tier escalation above, run it for a few weeks, and measure your manual review queue's outcome distribution. If reviewers are overturning too many auto-rejects, raise the threshold. If they're mostly confirming AI, you can safely automate more.

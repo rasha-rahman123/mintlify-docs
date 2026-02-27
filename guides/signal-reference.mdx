@@ -1,95 +1,21 @@
 ---
 title: Signal Reference
-description: Every score in the response payload explained.
+description: Every field in the scores object.
 ---
 
-## Overview
+For routing decisions, use `tier_verdicts`. The fields below support logging, reviewer interfaces, and certification records.
 
-HumanStandard uses an ensemble of specialized detection heads, each analyzing different acoustic properties of a track. The `scores` object exposes each head's output so you can understand what contributed to a verdict.
+## Scores
 
-All scores are in the range **0–1** where higher values indicate stronger AI-origin evidence, unless noted otherwise.
-
-## Primary scores
-
-### `truth_score`
-The main fused detection score. Combines all available head outputs using calibrated weights. This is what `verdict` is derived from.
-
-- `< 0.3` → strong human evidence
-- `0.3–0.6` → uncertain / borderline
-- `> 0.6` → strong AI evidence
-
-### `geo_score`
-A secondary detection score that is stable across audio processing variations — compression artifacts, mastering, loudness normalization — that can shift head-level scores. Useful as a corroborating signal when heads disagree.
-
-### `proto_score_v1`
-The score that drives the **press-safe** tier. Values ≥ 0.807 trigger a press-safe verdict.
-
-### `geometry_fused_score`
-An internal fusion score used by the calibration layer. Available for logging and auditing.
-
----
-
-## Detection heads
-
-### `head_a` — Spectral Texture
-Analyzes spectral texture characteristics across the frequency domain. Higher scores indicate frequency-domain patterns consistent with AI-generated audio.
-
-### `head_b` — Frequency-Domain Artifacts
-Analyzes artifact patterns in the frequency domain. Higher scores indicate spectral signatures associated with synthetic audio generation.
-
-### `head_c` — Temporal Acoustic Consistency
-Analyzes how acoustic characteristics evolve across time segments in the track. Higher scores indicate temporal patterns consistent with AI-generated content.
-
-*Interpretation*: Higher score = more AI-consistent temporal pattern
-
-### `head_d` — Auditory Modeling
-Analyzes the audio through a model of perceptual frequency response. Higher scores indicate perceptual characteristics associated with AI-generated audio.
-
-### `head_e` — Phase Consistency
-Analyzes phase and energy relationships in the audio signal. Higher scores indicate phase characteristics associated with AI generation.
-
-### `head_i` — High-Frequency Analysis
-Analyzes audio content in the upper frequency range. Higher scores indicate high-frequency characteristics associated with synthetic audio.
-
-### `head_j` — Generator Artifact Detection
-A precision artifact detection head. When this head fires, it is a high-confidence indicator of AI origin — it identifies specific synthesis artifacts that do not appear in human recordings.
-
-*Note*: This head activates rarely. It covers a subset of AI generators, but is highly reliable when it does fire.
-
-### `head_k` — Static Acoustic Analysis
-Provides a track-level acoustic classification that complements `head_c`. Captures global characteristics across the whole track rather than segment-level patterns.
-
----
-
-## Consistency signals
-
-### `embed_temporal_std`
-Standard deviation of per-segment acoustic scores from the temporal head across the track. **Lower values indicate more uniform acoustic patterns** — a characteristic of certain AI generators.
-
-- Near `0.0` → every segment scored identically — strong AI signal
-- Above `0.10` → meaningful variation across the track — more human-like
-
-### `reliability`
-An internal estimate of result reliability based on audio quality, duration, and head agreement. Values below `0.6` suggest treating the result with extra caution.
-
----
-
-## Head agreement
-
-The system tracks agreement across heads. When multiple heads align at high confidence, this is factored into the `truth_score`. The `policy_decision` field encodes operating mode context.
-
----
-
-## What `null` means
-
-A head score of `null` means that head did not run for this track. Common reasons:
-- Checkpoint not available for that head
-- Audio too short or too low quality for that head's minimum requirements
-- Head disabled for your organization
-
-A `null` head is excluded from fusion — it does not count as evidence in either direction.
-
----
+| Field | Description |
+|-------|-------------|
+| `truth_score` | Overall AI probability. 0 = human, 1 = AI. Use for displaying confidence to reviewers |
+| `geo_score` | Secondary corroborating score, stable across audio processing variations |
+| `proto_score_v1` | Drives the press-safe tier. Include in certification records |
+| `geometry_fused_score` | Internal score. Available for logging |
+| `head_a` – `head_k` | Individual detection signal outputs. Each is 0–1, higher = more AI evidence. Use for logging or reviewer interfaces |
+| `embed_temporal_std` | Acoustic consistency across the track. Available for logging |
+| `reliability` | Confidence in the result based on audio quality and duration. Below `0.6` — treat with extra caution |
 
 ## Origin attribution
 
@@ -98,4 +24,11 @@ A `null` head is excluded from fusion — it does not count as evidence in eithe
 | `origin` | Predicted generator: `"suno"`, `"udio"`, `"elevenlabs"`, `"human"`, `"unknown"` |
 | `origin_confidence` | Confidence in the prediction (0–1) |
 
-Origin attribution is a supplemental signal. It does not affect `verdict` or `tier_verdicts`. Use it for logging, audit trails, and analytics.
+Origin attribution is supplemental — use it for logging and analytics. It does not affect `verdict` or `tier_verdicts`.
+
+## Audit fields
+
+| Field | Description |
+|-------|-------------|
+| `calibration_version` | Version of the model calibration that produced this result. Include in certification records |
+| `processed_at` | ISO timestamp of when analysis completed |

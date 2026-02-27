@@ -21,21 +21,21 @@ Every result includes a `tier_verdicts` object:
   <Card title="Press-Safe" icon="shield-check">
     **~0% false positive rate**
 
-    0% FPR on both clean and hard-negative human tracks. Catches 18% of AI. Fires on `proto_score_v1 >= 0.807`.
+    Near-zero FPR on human recordings. Fires on `proto_score_v1 >= 0.807`.
 
     Certification, public attestation, licensing submissions.
   </Card>
   <Card title="Human-Safe" icon="user-check">
     **~1–2% false positive rate**
 
-    2.7% FPR on clean human, 0% on hard negatives. Catches 35% of AI.
+    Low FPR on human recordings.
 
     Supply chain gating, catalog intake, auto-reject workflows.
   </Card>
   <Card title="Recall" icon="magnifying-glass">
     **~5–10% false positive rate**
 
-    8% FPR on clean human, 0% on hard negatives. Catches 46% of AI.
+    Wider net, higher recall.
 
     Manual review queues, audit sampling, secondary screening.
   </Card>
@@ -71,7 +71,7 @@ Tiers are independent. A track can be `"suspicious"` at recall but `"human"` at 
 
 ## Press-safe and `proto_score_v1`
 
-Press-safe uses a proprietary multi-head acoustic analysis that is stable across the compression artifacts, mastering differences, and loudness normalization that shift score-based thresholds. The underlying score is `proto_score_v1`. Press-safe fires when `proto_score_v1 >= 0.807`.
+Press-safe uses a proprietary acoustic analysis that remains stable across compression, mastering, and loudness variation. The underlying score is `proto_score_v1`. Press-safe fires when `proto_score_v1 >= 0.807`.
 
 `press_safe` shows `null` if:
 - Press-safe scoring is not enabled for your organization
@@ -92,16 +92,3 @@ See the full use-case guides:
 - [Human Certification Flow](/guides/use-case-certification)
 - [Supply Chain Filtering Flow](/guides/use-case-supply-chain)
 
-## Performance benchmarks
-
-Measured on the Goal 2 study corpus (450 AI tracks, 150 clean human, 103 hard-negative human):
-
-| Tier | Threshold | AI Detection Rate | FPR (clean human) | FPR (hard negatives) |
-|------|-----------|-------------------|-------------------|----------------------|
-| Press-safe | 0.807 | 18% | **0%** | **0%** |
-| Human-safe | 0.713 | 35% | 2.7% | **0%** |
-| Recall | 0.650 | 46% | 8.0% | **0%** |
-
-<Note>
-  Hard negatives are human tracks with heavy processing (mastering artifacts, compression, pitch correction) that commonly fool AI detectors. HumanStandard achieves 0% FPR on hard negatives at all tiers.
-</Note>

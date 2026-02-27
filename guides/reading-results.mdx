@@ -1,17 +1,13 @@
 ---
 title: Reading Results
-description: How to parse a HumanStandard result record and act on it.
+description: How to parse a HumanStandard result and route it.
 ---
 
 ## The result record
 
-Every analyzed track returns a result record with this shape:
-
 ```json
 {
   "item_id": "track-001",
-  "url": "https://cdn.example.com/01.mp3",
-  "filename": "01.mp3",
   "status": "success",
 
   "verdict": "suspicious",
@@ -25,121 +21,76 @@ Every analyzed track returns a result record with this shape:
     "truth_score": 0.87,
     "geo_score": 0.79,
     "proto_score_v1": 0.74,
-    "geometry_fused_score": 0.81,
     "head_a": 0.91,
     "head_b": 0.83,
     "head_c": 0.77,
-    "head_d": 0.68,
-    "head_e": null,
-    "head_i": 0.21,
-    "head_j": 0.09,
-    "head_k": 0.71,
-    "embed_temporal_std": 0.04,
     "reliability": 0.88
-  },
-
-  "audio": {
-    "duration_sec": 187.4,
-    "bitrate": 320000,
-    "sample_rate": 44100,
-    "channels": 2,
-    "codec": "mp3"
   },
 
   "origin": "suno",
   "origin_confidence": 0.82,
-  "confidence_tier": "human-safe",
-  "policy_decision": "human-safe-suspicious",
-  "calibration_version": "clairity-bench-2026-01-12",
+  "calibration_version": "2026-01-12",
 
   "risk_series": [0.12, 0.14, 0.88, 0.91, 0.89, 0.87],
   "processed_at": "2026-02-27T10:43:01Z"
 }
 ```
 
-## Field guide
+## Routing
 
-### Top-level verdict
+Use `tier_verdicts` for all routing decisions. It gives you three simultaneous verdicts at different confidence levels:
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `verdict` | `"human"` \| `"suspicious"` | Primary verdict at the operating threshold |
-| `tier_verdicts` | object | Verdicts at all three confidence tiers simultaneously |
-| `confidence_tier` | `"press-safe"` \| `"human-safe"` \| `"recall"` | Which tier the operating mode is running at |
-| `policy_decision` | string | Internal label combining tier + verdict, e.g. `"human-safe-suspicious"` |
+| Field | Values | Use it for |
+|-------|--------|-----------|
+| `tier_verdicts.press_safe` | `"human"` / `"suspicious"` / `null` | Certification, licensing submissions |
+| `tier_verdicts.human_safe` | `"human"` / `"suspicious"` | Auto-reject at intake |
+| `tier_verdicts.recall` | `"human"` / `"suspicious"` | Escalation to manual review |
 
-### Scores
+See [Confidence Tiers](/guides/confidence-tiers) for the false positive rate at each tier.
 
-| Field | Description | Range |
-|-------|-------------|-------|
-| `truth_score` | Primary fused score. Near 0 = human, near 1 = AI | 0–1 |
-| `geo_score` | Secondary acoustic score, stable across compression and mastering variation | 0–1 |
-| `proto_score_v1` | Score that drives the press-safe tier. ≥ 0.807 = press-safe fires | 0–1 |
-| `geometry_fused_score` | Internal fusion of `geo_score` and `proto_score_v1` | 0–1 |
+## Key fields
 
-### Audio metadata
+| Field | What it's for |
+|-------|--------------|
+| `verdict` | Top-level result at your operating tier — `"human"` or `"suspicious"` |
+| `truth_score` | Overall AI probability (0–1). Use for displaying confidence to reviewers |
+| `geo_score` | Secondary corroborating score. Stable across audio processing variations |
+| `proto_score_v1` | Score driving the press-safe tier. Include in certification records |
+| `risk_series` | AI probability across the track timeline — shows which sections triggered |
+| `origin` | Predicted generator: `"suno"`, `"udio"`, `"elevenlabs"`, `"human"`, `"unknown"` |
+| `calibration_version` | Model version that produced this result. Include in audit records |
+| `reliability` | Result confidence based on audio quality. Below `0.6` — treat with extra caution |
 
-Standard codec info — useful for filtering low-quality inputs or enforcing minimum bitrate policies.
+## Routing code
 
-### Origin attribution
-
-| Field | Description |
-|-------|-------------|
-| `origin` | Predicted generator: `"suno"`, `"udio"`, `"elevenlabs"`, `"human"`, or `"unknown"` |
-| `origin_confidence` | Confidence in the origin prediction (0–1) |
-
-<Note>
-  Origin attribution is a supplemental signal — use it for logging and auditing, not as the primary basis for rejection decisions. Tier verdicts are the authoritative signal.
-</Note>
-
-### Risk series
-
-`risk_series` is a downsampled array (up to 120 values) of per-window AI probability across the track timeline. Use this to visualize *where* in a track AI characteristics appear — useful for identifying mixed tracks or identifying which sections triggered the detector.
-
-```
-0.12  0.14  0.13  ← sounds human
-0.88  0.91  0.89  ← AI-like section detected here
-0.87  0.90  0.88
-```
-
-## Acting on results
-
-### Simple binary decision
-
-```python
-def should_block(record: dict) -> bool:
-    return record["verdict"] == "suspicious"
-```
-
-### Tiered policy (recommended)
-
-```python
-def evaluate(record: dict) -> str:
-    """
-    Returns: "approve" | "flag" | "manual_review"
-    """
+```python Python
+def route(record: dict) -> str:
     tier = record.get("tier_verdicts") or {}
 
-    # Highest confidence — near zero false positives
-    if tier.get("press_safe") == "suspicious":
-        return "flag"
-
-    # ~1-2% FPR — good for most intake decisions
     if tier.get("human_safe") == "suspicious":
-        return "flag"
+        return "reject"
 
-    # ~5-10% FPR — higher recall, more false positives
     if tier.get("recall") == "suspicious":
         return "manual_review"
 
     return "approve"
 ```
 
-See [Use Case: Supply Chain](/guides/use-case-supply-chain) for a complete escalation flow.
+```typescript TypeScript
+function route(record: Record<string, any>): string {
+  const tier = record.tier_verdicts ?? {};
+
+  if (tier.human_safe === "suspicious") return "reject";
+  if (tier.recall === "suspicious") return "manual_review";
+  return "approve";
+}
+```
+
+See [Supply Chain Filtering](/guides/use-case-supply-chain) for the full escalation flow with error handling.
 
 ## Handling failures
 
-If a track fails to analyze, `status` will be `"failed"` and `verdict` will be `null`:
+Check `status` before reading `verdict`. On failure, `verdict` is `null`:
 
 ```json
 {
@@ -150,4 +101,4 @@ If a track fails to analyze, `status` will be `"failed"` and `verdict` will be `
 }
 ```
 
-Always check `status` before reading `verdict`.
+Always route failed tracks to manual review — never auto-reject on an analysis failure.

@@ -135,10 +135,10 @@ This creates an auditable chain: which version of the model made the call, at wh
 
 ## Handling `null` press-safe (expert review)
 
-When press-safe is `null`, `proto_score_v1` did not reach the press-safe threshold — not enough acoustic evidence to certify either way. Recommended actions:
+When press-safe is `null`, there is not enough acoustic evidence to make a press-safe determination. Recommended actions:
 
-1. Check `human_safe` — if that's also `"human"`, the track is probably fine but just didn't meet press-safe's strict threshold
-2. Review the `risk_series` — look for sections with elevated AI probability
+1. Check `human_safe` — if that's also `"human"`, the track falls below the press-safe threshold but shows no AI evidence at human-safe confidence
+2. Review `risk_series` to see which sections of the track scored elevated
 3. Route to a human expert with the full signal report
 4. Optionally: request the artist provide session files or DAW project for verification
 
