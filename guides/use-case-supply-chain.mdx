@@ -5,7 +5,7 @@ description: Block AI-generated content at intake, with tiered escalation to hum
 
 ## Tiered escalation
 
-Use all three tiers to route tracks into three lanes automatically. `human_safe` auto-rejects high-confidence AI; `recall` catches borderline cases and sends them to human review; everything else passes.
+Use all three tiers in a three-layer chain. `press_safe` is the first/default press-chain gate, `human_safe` is the second distribution-layer gate, and `recall` catches borderline cases for human review.
 
 ```
 Track arrives at intake
@@ -14,26 +14,32 @@ Track arrives at intake
   Analyze with HumanStandard
           │
           ▼
-  ┌─────────────────────────────┐
-  │ Check human_safe tier first │
-  └─────────────────────────────┘
+  ┌─────────────────────────────────────────────┐
+  │ Check press_safe tier first (default layer)│
+  └─────────────────────────────────────────────┘
           │
           ├── "suspicious" ──► ❌ Auto-reject
-          │                      (high confidence AI, ~1-2% FPR)
+          │                      (highest confidence AI, ~0% FPR)
           │
-          └── "human" ──────► Check recall tier
-                                    │
-                                    ├── "suspicious" ──► 🔍 Manual review queue
-                                    │                      (borderline — human expert decides)
-                                    │
-                                    └── "human" ──────► ✅ Approve
-                                                          (passes all tiers)
+          └── "human"/null ──► Check human_safe tier
+                                   │
+                                   ├── "suspicious" ──► ❌ Auto-reject
+                                   │                      (high confidence AI, ~1-2% FPR)
+                                   │
+                                   └── "human" ──────► Check recall tier
+                                                        │
+                                                        ├── "suspicious" ──► 🔍 Manual review queue
+                                                        │                      (borderline - human expert decides)
+                                                        │
+                                                        └── "human" ──────► ✅ Approve
+                                                                              (passes all tiers)
 ```
 
-This gives you three outcomes:
-1. **Auto-reject** — strong AI evidence, no human review needed
-2. **Manual review** — borderline, needs a human to look
-3. **Approve** — passes all tiers, admitted to catalog
+This gives you four outcomes:
+1. **Auto-reject (press chain)** - strongest AI evidence at first/default layer
+2. **Auto-reject (distribution layer)** - high-confidence AI at second layer
+3. **Manual review** - borderline, needs a human to look
+4. **Approve** - passes all tiers, admitted to catalog
 
 ## Implementation
 
@@ -65,11 +71,23 @@ def evaluate_intake(audio_url: str, item_id: str) -> dict:
     tier = result.get("tier_verdicts") or {}
     scores = result.get("scores") or {}
 
+    press_safe = tier.get("press_safe")
     human_safe = tier.get("human_safe")
     recall = tier.get("recall")
 
+    if press_safe == "suspicious":
+        # First/default layer (press chain) - strongest AI evidence
+        return {
+            "item_id": item_id,
+            "decision": IntakeDecision.REJECT,
+            "reason": "press_safe_suspicious",
+            "truth_score": scores.get("truth_score"),
+            "geo_score": scores.get("geo_score"),
+            "origin": result.get("origin"),
+        }
+
     if human_safe == "suspicious":
-        # High confidence AI — auto-reject
+        # Second layer (distribution) - high confidence AI
         return {
             "item_id": item_id,
             "decision": IntakeDecision.REJECT,
@@ -127,6 +145,17 @@ async function evaluateIntake(audioUrl: string, itemId: string): Promise<IntakeR
 
   const tier = result.tier_verdicts ?? {};
   const scores = result.scores ?? {};
+
+  if (tier.press_safe === "suspicious") {
+    return {
+      item_id: itemId,
+      decision: "reject",
+      reason: "press_safe_suspicious",
+      truth_score: scores.truth_score,
+      geo_score: scores.geo_score,
+      origin: result.origin,
+    };
+  }
 
   if (tier.human_safe === "suspicious") {
     return {
@@ -201,16 +230,16 @@ def handle_track_complete(event: dict):
 
 ## Tuning the policy
 
-The two-tier escalation above is a starting point. You can adjust based on your catalog's risk tolerance:
+The three-layer escalation above is a starting point. You can adjust based on your catalog's risk tolerance:
 
 **Stricter (fewer false negatives, more manual review)**:
-- Move the auto-reject line to `recall` instead of `human_safe`
+- Treat `recall == "suspicious"` as auto-reject instead of manual review
 - Add a `geo_score >= 0.5` secondary check before approving
 
 **More permissive (less manual review)**:
-- Only auto-reject when `press_safe == "suspicious"`
-- Use `human_safe` to flag for review rather than auto-reject
+- Only auto-reject when `press_safe == "suspicious"` (do not auto-reject on `human_safe`)
+- Use `human_safe` to flag for review instead of auto-reject
 
 <Tip>
-  Start with the two-tier escalation above, run it for a few weeks, and measure your manual review queue's outcome distribution. If reviewers are overturning too many auto-rejects, raise the threshold. If they're mostly confirming AI, you can safely automate more.
+  Start with the three-layer escalation above, run it for a few weeks, and measure your manual review queue's outcome distribution. If reviewers are overturning too many auto-rejects, raise the threshold. If they're mostly confirming AI, you can safely automate more.
 </Tip>

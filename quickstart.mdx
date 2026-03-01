@@ -58,10 +58,12 @@ Route based on `tier_verdicts`:
 ```python
 tier = result.get("tier_verdicts") or {}
 
-if tier.get("human_safe") == "suspicious":
-    # Reject — high-confidence AI
+if tier.get("press_safe") == "suspicious":
+    # Reject - first/default press-chain gate
+elif tier.get("human_safe") == "suspicious":
+    # Reject - distribution-layer gate
 elif tier.get("recall") == "suspicious":
-    # Send to manual review — borderline
+    # Send to manual review - borderline
 else:
     # Approve
 ```

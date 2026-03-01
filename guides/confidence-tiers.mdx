@@ -84,11 +84,11 @@ Contact support to enable press-safe scoring for your account.
 | Use case | Recommended tier | Why |
 |----------|-----------------|-----|
 | Certification / public attestation | `press_safe` | Near-zero FPR protects reputation |
-| Supply chain auto-reject | `human_safe` | Blocks AI confidently, low collateral damage to human artists |
+| Supply chain first/default gate (press chain) | `press_safe` | First layer for highest-confidence blocking |
+| Distribution-layer auto-reject | `human_safe` | Blocks AI confidently with low collateral damage to human artists |
 | Escalation to manual review | `recall` | Cast a wider net, let humans decide borderline cases |
 | Internal audit / research | All three | Full picture for analysis |
 
 See the full use-case guides:
 - [Human Certification Flow](/guides/use-case-certification)
 - [Supply Chain Filtering Flow](/guides/use-case-supply-chain)
-

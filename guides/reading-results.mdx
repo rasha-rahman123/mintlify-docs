@@ -42,8 +42,8 @@ Use `tier_verdicts` for all routing decisions. It gives you three simultaneous v
 
 | Field | Values | Use it for |
 |-------|--------|-----------|
-| `tier_verdicts.press_safe` | `"human"` / `"suspicious"` / `null` | Certification, licensing submissions |
-| `tier_verdicts.human_safe` | `"human"` / `"suspicious"` | Auto-reject at intake |
+| `tier_verdicts.press_safe` | `"human"` / `"suspicious"` / `null` | Press-chain default gate, certification, licensing submissions |
+| `tier_verdicts.human_safe` | `"human"` / `"suspicious"` | Distribution-layer auto-reject at intake |
 | `tier_verdicts.recall` | `"human"` / `"suspicious"` | Escalation to manual review |
 
 See [Confidence Tiers](/guides/confidence-tiers) for the false positive rate at each tier.
@@ -67,6 +67,9 @@ See [Confidence Tiers](/guides/confidence-tiers) for the false positive rate at 
 def route(record: dict) -> str:
     tier = record.get("tier_verdicts") or {}
 
+    if tier.get("press_safe") == "suspicious":
+        return "reject"
+
     if tier.get("human_safe") == "suspicious":
         return "reject"
 
@@ -80,6 +83,7 @@ def route(record: dict) -> str:
 function route(record: Record<string, any>): string {
   const tier = record.tier_verdicts ?? {};
 
+  if (tier.press_safe === "suspicious") return "reject";
   if (tier.human_safe === "suspicious") return "reject";
   if (tier.recall === "suspicious") return "manual_review";
   return "approve";
