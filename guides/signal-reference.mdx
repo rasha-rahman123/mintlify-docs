@@ -7,15 +7,22 @@ For routing decisions, use `tier_verdicts`. The fields below support logging, re
 
 ## Scores
 
-| Field | Description |
-|-------|-------------|
-| `truth_score` | Overall AI probability. 0 = human, 1 = AI. Use for displaying confidence to reviewers |
-| `geo_score` | Secondary corroborating score, stable across audio processing variations |
-| `proto_score_v1` | Drives the press-safe tier. Include in certification records |
-| `geometry_fused_score` | Internal score. Available for logging |
-| `head_a` – `head_k` | Individual detection signal outputs. Each is 0–1, higher = more AI evidence. Use for logging or reviewer interfaces |
-| `embed_temporal_std` | Acoustic consistency across the track. Available for logging |
-| `reliability` | Confidence in the result based on audio quality and duration. Below `0.6` — treat with extra caution |
+| Field | Range | Description |
+|-------|-------|-------------|
+| `confidence_score` | 0–1 | Overall AI probability. 0 = human, 1 = AI. Use for displaying confidence to reviewers |
+| `geometry_score` | 0–1 | Multi-signal corroborating score, stable across audio processing variations |
+| `fusion_score` | 0–1 | Combined geometric fusion of all detection signals |
+| `prototype_score` | 0–1 | Drives the press-safe tier. Include in certification records |
+| `spectral_score` | 0–1 | Primary spectral analysis signal |
+| `frequency_artifact_score` | 0–1 | Detects frequency-domain generation artifacts |
+| `temporal_consistency_score` | 0–1 | Temporal pattern consistency across the track |
+| `perceptual_score` | 0–1 | Perceptual model analysis |
+| `phase_coherence_score` | 0–1 | Phase-domain coherence analysis |
+| `representation_score` | 0–1 | Embedding-space representation analysis |
+| `hf_energy_score` | 0–1 | High-frequency energy distribution analysis |
+| `codec_artifact_score` | 0–1 | Audio codec artifact detection |
+| `temporal_stability` | float | Acoustic consistency across the track. Available for logging |
+| `reliability` | 0–1 | Confidence in the result based on audio quality and duration. Below `0.6` — treat with extra caution |
 
 ## Origin attribution
 

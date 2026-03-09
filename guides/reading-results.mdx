@@ -18,12 +18,13 @@ description: How to parse a HumanStandard result and route it.
   },
 
   "scores": {
-    "truth_score": 0.87,
-    "geo_score": 0.79,
-    "proto_score_v1": 0.74,
-    "head_a": 0.91,
-    "head_b": 0.83,
-    "head_c": 0.77,
+    "confidence_score": 0.87,
+    "geometry_score": 0.79,
+    "prototype_score": 0.74,
+    "spectral_score": 0.91,
+    "frequency_artifact_score": 0.83,
+    "temporal_consistency_score": 0.77,
+    "representation_score": 0.68,
     "reliability": 0.88
   },
 
@@ -53,9 +54,9 @@ See [Confidence Tiers](/guides/confidence-tiers) for the false positive rate at 
 | Field | What it's for |
 |-------|--------------|
 | `verdict` | Top-level result at your operating tier — `"human"` or `"suspicious"` |
-| `truth_score` | Overall AI probability (0–1). Use for displaying confidence to reviewers |
-| `geo_score` | Secondary corroborating score. Stable across audio processing variations |
-| `proto_score_v1` | Score driving the press-safe tier. Include in certification records |
+| `confidence_score` | Overall AI probability (0–1). Use for displaying confidence to reviewers |
+| `geometry_score` | Multi-signal corroborating score. Stable across audio processing variations |
+| `prototype_score` | Score driving the press-safe tier. Include in certification records |
 | `risk_series` | AI probability across the track timeline — shows which sections triggered |
 | `origin` | Predicted generator: `"suno"`, `"udio"`, `"elevenlabs"`, `"human"`, `"unknown"` |
 | `calibration_version` | Model version that produced this result. Include in audit records |
