@@ -81,8 +81,8 @@ def evaluate_intake(audio_url: str, item_id: str) -> dict:
             "item_id": item_id,
             "decision": IntakeDecision.REJECT,
             "reason": "press_safe_suspicious",
-            "truth_score": scores.get("truth_score"),
-            "geo_score": scores.get("geo_score"),
+            "confidence_score": scores.get("confidence_score"),
+            "geometry_score": scores.get("geometry_score"),
             "origin": result.get("origin"),
         }
 
@@ -92,8 +92,8 @@ def evaluate_intake(audio_url: str, item_id: str) -> dict:
             "item_id": item_id,
             "decision": IntakeDecision.REJECT,
             "reason": "human_safe_suspicious",
-            "truth_score": scores.get("truth_score"),
-            "geo_score": scores.get("geo_score"),
+            "confidence_score": scores.get("confidence_score"),
+            "geometry_score": scores.get("geometry_score"),
             "origin": result.get("origin"),
         }
 
@@ -103,8 +103,8 @@ def evaluate_intake(audio_url: str, item_id: str) -> dict:
             "item_id": item_id,
             "decision": IntakeDecision.MANUAL_REVIEW,
             "reason": "recall_suspicious_borderline",
-            "truth_score": scores.get("truth_score"),
-            "geo_score": scores.get("geo_score"),
+            "confidence_score": scores.get("confidence_score"),
+            "geometry_score": scores.get("geometry_score"),
             "risk_series": result.get("risk_series"),
         }
 
@@ -112,7 +112,7 @@ def evaluate_intake(audio_url: str, item_id: str) -> dict:
     return {
         "item_id": item_id,
         "decision": IntakeDecision.APPROVE,
-        "truth_score": scores.get("truth_score"),
+        "confidence_score": scores.get("confidence_score"),
     }
 ```
 
@@ -123,8 +123,8 @@ interface IntakeResult {
   item_id: string;
   decision: IntakeDecision;
   reason?: string;
-  truth_score?: number | null;
-  geo_score?: number | null;
+  confidence_score?: number | null;
+  geometry_score?: number | null;
   origin?: string | null;
   risk_series?: number[];
 }
@@ -151,8 +151,8 @@ async function evaluateIntake(audioUrl: string, itemId: string): Promise<IntakeR
       item_id: itemId,
       decision: "reject",
       reason: "press_safe_suspicious",
-      truth_score: scores.truth_score,
-      geo_score: scores.geo_score,
+      confidence_score: scores.confidence_score,
+      geometry_score: scores.geometry_score,
       origin: result.origin,
     };
   }
@@ -162,8 +162,8 @@ async function evaluateIntake(audioUrl: string, itemId: string): Promise<IntakeR
       item_id: itemId,
       decision: "reject",
       reason: "human_safe_suspicious",
-      truth_score: scores.truth_score,
-      geo_score: scores.geo_score,
+      confidence_score: scores.confidence_score,
+      geometry_score: scores.geometry_score,
       origin: result.origin,
     };
   }
@@ -173,8 +173,8 @@ async function evaluateIntake(audioUrl: string, itemId: string): Promise<IntakeR
       item_id: itemId,
       decision: "manual_review",
       reason: "recall_suspicious_borderline",
-      truth_score: scores.truth_score,
-      geo_score: scores.geo_score,
+      confidence_score: scores.confidence_score,
+      geometry_score: scores.geometry_score,
       risk_series: result.risk_series,
     };
   }
@@ -182,7 +182,7 @@ async function evaluateIntake(audioUrl: string, itemId: string): Promise<IntakeR
   return {
     item_id: itemId,
     decision: "approve",
-    truth_score: scores.truth_score,
+    confidence_score: scores.confidence_score,
   };
 }
 ```
@@ -193,11 +193,11 @@ When a track lands in manual review, surface the key signals so reviewers can ma
 
 | Signal | What to show | What it means |
 |--------|-------------|---------------|
-| `truth_score` | Score bar 0–1 | Overall AI probability |
+| `confidence_score` | Score bar 0–1 | Overall AI probability |
 | `risk_series` | Waveform heatmap | Which sections triggered the detector |
 | `origin` | Badge | Predicted generator (if any) |
 | `head_a`, `head_b`, `head_c` | Mini bars | Individual detection head scores |
-| `geo_score` | Score | Secondary corroborating score |
+| `geometry_score` | Score | Secondary corroborating score |
 | `tier_verdicts.recall` | `"suspicious"` | Why it landed in review |
 
 ## Bulk intake pipeline
@@ -234,7 +234,7 @@ The three-layer escalation above is a starting point. You can adjust based on yo
 
 **Stricter (fewer false negatives, more manual review)**:
 - Treat `recall == "suspicious"` as auto-reject instead of manual review
-- Add a `geo_score >= 0.5` secondary check before approving
+- Add a `geometry_score >= 0.5` secondary check before approving
 
 **More permissive (less manual review)**:
 - Only auto-reject when `press_safe == "suspicious"` (do not auto-reject on `human_safe`)

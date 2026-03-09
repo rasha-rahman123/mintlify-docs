@@ -52,8 +52,8 @@ for (const record of records) {
 ## Response (NDJSON)
 
 ```
-{"item_id":"track-001","status":"success","verdict":"human","tier_verdicts":{"press_safe":"human","human_safe":"human","recall":"human"},"scores":{"truth_score":0.12,"geo_score":0.18},...}
-{"item_id":"track-002","status":"success","verdict":"suspicious","tier_verdicts":{"press_safe":null,"human_safe":"suspicious","recall":"suspicious"},"scores":{"truth_score":0.79,"geo_score":0.71},...}
+{"item_id":"track-001","status":"success","verdict":"human","tier_verdicts":{"press_safe":"human","human_safe":"human","recall":"human"},"scores":{"confidence_score":0.12,"geometry_score":0.18,"reliability":0.91},...}
+{"item_id":"track-002","status":"success","verdict":"suspicious","tier_verdicts":{"press_safe":null,"human_safe":"suspicious","recall":"suspicious"},"scores":{"confidence_score":0.79,"geometry_score":0.71,"reliability":0.88},...}
 {"item_id":"track-003","status":"failed","verdict":null,"error":"audio_load_failed"}
 ```
 

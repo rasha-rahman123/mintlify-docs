@@ -21,7 +21,7 @@ Every result includes a `tier_verdicts` object:
   <Card title="Press-Safe" icon="shield-check">
     **~0% false positive rate**
 
-    Near-zero FPR on human recordings. Fires on `proto_score_v1 >= 0.807`.
+    Near-zero FPR on human recordings. Fires on `prototype_score >= 0.807`.
 
     Certification, public attestation, licensing submissions.
   </Card>
@@ -69,9 +69,9 @@ Tiers are independent. A track can be `"suspicious"` at recall but `"human"` at 
 { "press_safe": null, "human_safe": "suspicious", "recall": "suspicious" }
 ```
 
-## Press-safe and `proto_score_v1`
+## Press-safe and `prototype_score`
 
-Press-safe uses a proprietary acoustic analysis that remains stable across compression, mastering, and loudness variation. The underlying score is `proto_score_v1`. Press-safe fires when `proto_score_v1 >= 0.807`.
+Press-safe uses a proprietary acoustic analysis that remains stable across compression, mastering, and loudness variation. The underlying score is `prototype_score`. Press-safe fires when `prototype_score >= 0.807`.
 
 `press_safe` shows `null` if:
 - Press-safe scoring is not enabled for your organization

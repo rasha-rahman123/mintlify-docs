@@ -5,7 +5,7 @@ description: Issue near-zero-FPR attestations of human origin for licensing, roy
 
 ## `press_safe` tier
 
-`press_safe` evaluates `proto_score_v1` against a threshold calibrated at **0% FPR on both clean and hard-negative human tracks**. Use it when a false positive carries reputational or legal consequences: royalty pool submissions, sync licensing, human-only platform ingestion.
+`press_safe` evaluates `prototype_score` against a threshold calibrated at **0% FPR on both clean and hard-negative human tracks**. Use it when a false positive carries reputational or legal consequences: royalty pool submissions, sync licensing, human-only platform ingestion.
 
 | Value | Action |
 |-------|--------|
@@ -44,7 +44,7 @@ def certify_track(audio_url: str) -> dict:
     ).json()
 
     press_safe = (result.get("tier_verdicts") or {}).get("press_safe")
-    proto_score = (result.get("scores") or {}).get("proto_score_v1")
+    proto_score = (result.get("scores") or {}).get("prototype_score")
 
     if press_safe == "human":
         return {
@@ -92,7 +92,7 @@ async function certifyTrack(audioUrl: string): Promise<CertificationResult> {
   }).then(r => r.json());
 
   const pressSafe = result.tier_verdicts?.press_safe;
-  const protoScore = result.scores?.proto_score_v1;
+  const protoScore = result.scores?.prototype_score;
 
   if (pressSafe === "human") {
     return {
@@ -126,7 +126,7 @@ When issuing a human-origin certificate, include:
 | Field | Value |
 |-------|-------|
 | `confidence_tier` | `"press-safe"` |
-| `proto_score_v1` | e.g. `0.21` |
+| `prototype_score` | e.g. `0.21` |
 | `calibration_version` | e.g. `"clairity-bench-2026-01-12"` |
 | `processed_at` | ISO timestamp |
 | `origin` | `"human"` (or `null`) |
