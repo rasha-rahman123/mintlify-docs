@@ -1,0 +1,118 @@
+---
+title: Simplified Responses (v2)
+description: Reduce payload size to ~10 fields for lightweight integrations.
+---
+
+## The problem
+
+The default response includes 40+ fields — scores, metrics, tier verdicts, calibration metadata, audio forensics. That depth is valuable for certification workflows and audit trails, but partners building intake filters or dashboards only need the verdict.
+
+## Opt in with `?detail=simple`
+
+Append `detail=simple` to any endpoint that returns analysis results. The response shrinks from 40+ fields to 10.
+
+Works on:
+
+- `POST /analyze?detail=simple`
+- `GET /jobs/{job_id}/results?detail=simple`
+
+You can also pass it as a header instead of a query parameter:
+
+```
+X-Response-Format: simple
+```
+
+No other changes required. Omitting the parameter returns the full response — existing integrations are unaffected.
+
+## v2 response shape
+
+Single track (`POST /analyze?detail=simple`):
+
+```json
+{
+  "prediction": "AI Generated",
+  "ai_probability": 91.2,
+  "confidence": 91.2,
+  "assessment": "flagged",
+  "origin": "suno",
+  "origin_confidence": 0.87,
+  "risk_timeline": [0.89, 0.92, 0.91, 0.88, 0.94, 0.90],
+  "audio": {
+    "duration_sec": 187.4,
+    "sample_rate": 44100,
+    "bitrate": "320k",
+    "codec": "mp3"
+  },
+  "filename": "track.mp3",
+  "model_version": "2026-01-12"
+}
+```
+
+Bulk results (`GET /jobs/{id}/results?detail=simple`):
+
+```json
+{"item_id":"track-001","url":"https://cdn.example.com/01.mp3","status":"success","processed_at":"2026-04-07T10:43:01Z","prediction":"Human Made","ai_probability":8.4,"confidence":91.6,"assessment":"clear","origin":"human","origin_confidence":null,"risk_timeline":[0.06,0.09,0.11,0.08],"audio":{"duration_sec":214.3,"sample_rate":44100,"bitrate":"320k","codec":"mp3"},"filename":"01.mp3","model_version":"2026-01-12","error":null,"error_code":null}
+{"item_id":"track-002","url":"https://cdn.example.com/02.mp3","status":"failed","processed_at":"2026-04-07T10:43:03Z","prediction":"Human Made","ai_probability":0,"confidence":100.0,"assessment":"clear","origin":null,"origin_confidence":null,"risk_timeline":[],"audio":{"duration_sec":null,"sample_rate":null,"bitrate":null,"codec":null},"filename":null,"model_version":null,"error":"Could not download audio: access denied (403). Ensure the URL is publicly accessible.","error_code":"source_forbidden"}
+```
+
+## Field reference
+
+| Field | Type | Description |
+|-------|------|-------------|
+| prediction | string | `"AI Generated"`, `"Human Made"`, or `"Inconclusive"` |
+| ai_probability | number | 0–100 scale. Probability the track contains AI-generated audio |
+| confidence | number | 0–100 scale. How confident the model is in either direction |
+| assessment | string | Actionable label: `"flagged"`, `"review"`, or `"clear"` |
+| origin | string \| null | Predicted AI generator: `"suno"`, `"udio"`, `"elevenlabs"`, or `null` |
+| origin_confidence | number \| null | 0–1 confidence in the origin prediction |
+| risk_timeline | number[] | Per-window AI probability (0–1), one entry per ~2.5s of audio |
+| audio | object | Duration, sample rate, bitrate, codec |
+| filename | string \| null | Original filename |
+| model_version | string \| null | Calibration version that produced this result |
+
+Bulk results include additional envelope fields:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| item_id | string | Your identifier from the job submission |
+| url | string | The source URL submitted |
+| status | string | `"success"` or `"failed"` |
+| processed_at | string | ISO 8601 timestamp |
+| error | string \| null | Human-readable error message on failure |
+| error_code | string \| null | Machine-readable error code on failure |
+
+## Error codes
+
+When a track fails, `error_code` tells you why:
+
+| Code | Meaning | Action |
+|------|---------|--------|
+| source_forbidden | 403 — URL requires authentication | Make the URL publicly accessible or use signed URLs |
+| source_not_found | 404 — URL returned not found | Verify the URL is correct and the file exists |
+| source_unauthorized | 401 — URL requires credentials | Make the URL publicly accessible or use signed URLs |
+| timeout | Analysis timed out | Retry, or check if the file is unusually large |
+| no_workers_available | GPU capacity temporarily exhausted | Retry after a few minutes |
+| audio_decode_error | File is not valid audio | Check the file format — mp3, wav, flac, m4a supported |
+| analysis_error | Catch-all for other failures | Contact support if persistent |
+
+## Routing with v2
+
+```python
+def route(record: dict) -> str:
+    if record["status"] == "failed":
+        return "manual_review"
+
+    if record["assessment"] == "flagged":
+        return "reject"
+
+    if record["assessment"] == "review":
+        return "manual_review"
+
+    return "approve"
+```
+
+## When to use v2 vs full
+
+Use **v2** (`detail=simple`) when you need a pass/fail gate and don't require individual signal scores or tier-level breakdowns. Intake filters, dashboards, and lightweight integrations.
+
+Use **full** (default) when you need audit-grade detail — tier verdicts at three confidence levels, 14 individual signal scores, calibration metadata, and composition analysis. Certification workflows, legal submissions, and forensic review.

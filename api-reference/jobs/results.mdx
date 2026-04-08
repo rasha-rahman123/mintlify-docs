@@ -59,6 +59,15 @@ for (const record of records) {
 
 Each record matches the full result schema. See [Reading Results](/guides/reading-results) for field descriptions.
 
+## Simplified response
+
+Add `detail=simple` to get a reduced ~10-field response per track instead of the full 40+ field record. See [Simplified Responses](/guides/simplified-responses) for the v2 schema and field reference.
+
+```bash
+curl "https://app.jobsbyhumans.com/api/v1/jobs/job_abc123/results?detail=simple" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
 ## Filtering
 
 | Query param | Values | Description |

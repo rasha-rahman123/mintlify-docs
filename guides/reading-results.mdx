@@ -95,15 +95,32 @@ See [Supply Chain Filtering](/guides/use-case-supply-chain) for the full escalat
 
 ## Handling failures
 
-Check `status` before reading `verdict`. On failure, `verdict` is `null`:
+Check `status` before reading `verdict`. On failure, `verdict` is `null` and the `error` / `error_code` fields explain what went wrong:
 
 ```json
 {
   "item_id": "track-005",
   "status": "failed",
   "verdict": null,
-  "error": "audio_load_failed: unsupported format"
+  "error": "Could not download audio: access denied (403). Ensure the URL is publicly accessible.",
+  "error_code": "source_forbidden"
 }
 ```
 
+The `error` field is a human-readable message. The `error_code` field is a machine-readable code you can switch on programmatically:
+
+| Code | Meaning |
+|------|---------|
+| `source_forbidden` | 403 — the URL requires authentication |
+| `source_not_found` | 404 — the file was not found at that URL |
+| `source_unauthorized` | 401 — the URL requires credentials |
+| `timeout` | Analysis timed out |
+| `no_workers_available` | GPU capacity temporarily exhausted — retry shortly |
+| `audio_decode_error` | The file is not a valid audio format |
+| `analysis_error` | Catch-all for other failures |
+
 Always route failed tracks to manual review — never auto-reject on an analysis failure.
+
+<Tip>
+  For lightweight integrations, use `?detail=simple` to get a reduced response with the same error fields. See [Simplified Responses](/guides/simplified-responses).
+</Tip>

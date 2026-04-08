@@ -39,6 +39,7 @@
             "group": "Understanding Results",
             "pages": [
               "guides/reading-results",
+              "guides/simplified-responses",
               "guides/confidence-tiers",
               "guides/signal-reference"
             ]

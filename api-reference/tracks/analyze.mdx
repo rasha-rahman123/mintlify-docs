@@ -24,6 +24,14 @@ POST /analyze
 
 *Provide either `url` or `file_id`, not both.
 
+## Query parameters
+
+| Param | Values | Description |
+|-------|--------|-------------|
+| `detail` | `full`, `simple` | Response detail level. Default: `full` |
+
+Pass `detail=simple` for a reduced ~10-field response. See [Simplified Responses](/guides/simplified-responses).
+
 ## Example request
 
 <CodeGroup>
