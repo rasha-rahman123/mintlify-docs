@@ -54,7 +54,7 @@ class IntakeDecision(str, Enum):
 
 def evaluate_intake(audio_url: str, item_id: str) -> dict:
     result = requests.post(
-        "https://app.jobsbyhumans.com/api/v1/analyze",
+        "https://app.jobsbyhumans.com/api/analyze",
         headers={"Authorization": f"Bearer {os.environ['HS_API_KEY']}"},
         json={"url": audio_url}
     ).json()
@@ -130,7 +130,7 @@ interface IntakeResult {
 }
 
 async function evaluateIntake(audioUrl: string, itemId: string): Promise<IntakeResult> {
-  const result = await fetch("https://app.jobsbyhumans.com/api/v1/analyze", {
+  const result = await fetch("https://app.jobsbyhumans.com/api/analyze", {
     method: "POST",
     headers: {
       "Authorization": `Bearer ${process.env.HS_API_KEY}`,
@@ -208,7 +208,7 @@ For high-volume intake, use jobs with webhooks:
 def submit_intake_batch(tracks: list[dict]) -> str:
     """Submit a batch for analysis. Returns job_id."""
     job = requests.post(
-        "https://app.jobsbyhumans.com/api/v1/jobs",
+        "https://app.jobsbyhumans.com/bulk/jobs",
         headers={"Authorization": f"Bearer {os.environ['HS_API_KEY']}"},
         json={
             "name": f"Intake {datetime.utcnow().date()}",

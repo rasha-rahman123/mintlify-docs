@@ -27,7 +27,7 @@ import os, requests
 HEADERS = {"Authorization": f"Bearer {os.environ['HS_API_KEY']}"}
 
 response = requests.post(
-    "https://app.jobsbyhumans.com/api/v1/analyze",
+    "https://app.jobsbyhumans.com/api/analyze",
     headers=HEADERS,
     json={"url": "https://cdn.example.com/track.mp3"}
 )

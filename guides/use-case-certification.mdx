@@ -38,7 +38,7 @@ import requests, os
 
 def certify_track(audio_url: str) -> dict:
     result = requests.post(
-        "https://app.jobsbyhumans.com/api/v1/analyze",
+        "https://app.jobsbyhumans.com/api/analyze",
         headers={"Authorization": f"Bearer {os.environ['HS_API_KEY']}"},
         json={"url": audio_url}
     ).json()
@@ -82,7 +82,7 @@ interface CertificationResult {
 }
 
 async function certifyTrack(audioUrl: string): Promise<CertificationResult> {
-  const result = await fetch("https://app.jobsbyhumans.com/api/v1/analyze", {
+  const result = await fetch("https://app.jobsbyhumans.com/api/analyze", {
     method: "POST",
     headers: {
       "Authorization": `Bearer ${process.env.HS_API_KEY}`,

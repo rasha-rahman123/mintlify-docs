@@ -47,7 +47,7 @@ POST /jobs
 import requests, os
 
 job = requests.post(
-    "https://app.jobsbyhumans.com/api/v1/jobs",
+    "https://app.jobsbyhumans.com/bulk/jobs",
     headers={"Authorization": f"Bearer {os.environ['HS_API_KEY']}"},
     json={
         "name": "Q1 Catalog Scan",
@@ -64,7 +64,7 @@ print(job["status"]) # "queued"
 ```
 
 ```typescript TypeScript
-const job = await fetch("https://app.jobsbyhumans.com/api/v1/jobs", {
+const job = await fetch("https://app.jobsbyhumans.com/bulk/jobs", {
   method: "POST",
   headers: {
     "Authorization": `Bearer ${process.env.HS_API_KEY}`,

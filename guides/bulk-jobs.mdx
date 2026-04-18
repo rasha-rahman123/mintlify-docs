@@ -15,7 +15,7 @@ Jobs are ideal for:
 ## Creating a job
 
 ```http
-POST https://app.jobsbyhumans.com/api/v1/jobs
+POST https://app.jobsbyhumans.com/bulk/jobs
 Authorization: Bearer YOUR_API_KEY
 Content-Type: application/json
 ```
@@ -37,7 +37,7 @@ Content-Type: application/json
 import requests, os
 
 job = requests.post(
-    "https://app.jobsbyhumans.com/api/v1/jobs",
+    "https://app.jobsbyhumans.com/bulk/jobs",
     headers={"Authorization": f"Bearer {os.environ['HS_API_KEY']}"},
     json={
         "name": "Q1 Catalog Scan",
@@ -54,7 +54,7 @@ print(job["status"])  # "queued"
 ```
 
 ```typescript TypeScript
-const job = await fetch("https://app.jobsbyhumans.com/api/v1/jobs", {
+const job = await fetch("https://app.jobsbyhumans.com/bulk/jobs", {
   method: "POST",
   headers: {
     "Authorization": `Bearer ${process.env.HS_API_KEY}`,
@@ -80,7 +80,7 @@ console.log(job.status); // "queued"
 Poll or use webhooks to track progress:
 
 ```http
-GET https://app.jobsbyhumans.com/api/v1/jobs/{job_id}
+GET https://app.jobsbyhumans.com/bulk/jobs/{job_id}
 ```
 
 ```json
@@ -106,7 +106,7 @@ GET https://app.jobsbyhumans.com/api/v1/jobs/{job_id}
 Once the job is complete, retrieve all results:
 
 ```http
-GET https://app.jobsbyhumans.com/api/v1/jobs/{job_id}/results
+GET https://app.jobsbyhumans.com/bulk/jobs/{job_id}/results
 ```
 
 Results are returned as newline-delimited JSON (NDJSON), one record per track. See [Reading Results](/guides/reading-results) for the full record schema.

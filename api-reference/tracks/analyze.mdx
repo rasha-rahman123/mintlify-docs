@@ -36,7 +36,7 @@ Pass `detail=simple` for a reduced ~10-field response. See [Simplified Responses
 
 <CodeGroup>
 ```bash cURL
-curl -X POST https://app.jobsbyhumans.com/api/v1/analyze \
+curl -X POST https://app.jobsbyhumans.com/api/analyze \
   -H "Authorization: Bearer YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"url": "https://cdn.example.com/track.mp3"}'
@@ -46,14 +46,14 @@ curl -X POST https://app.jobsbyhumans.com/api/v1/analyze \
 import requests, os
 
 result = requests.post(
-    "https://app.jobsbyhumans.com/api/v1/analyze",
+    "https://app.jobsbyhumans.com/api/analyze",
     headers={"Authorization": f"Bearer {os.environ['HS_API_KEY']}"},
     json={"url": "https://cdn.example.com/track.mp3"}
 ).json()
 ```
 
 ```typescript TypeScript
-const result = await fetch("https://app.jobsbyhumans.com/api/v1/analyze", {
+const result = await fetch("https://app.jobsbyhumans.com/api/analyze", {
   method: "POST",
   headers: {
     "Authorization": `Bearer ${process.env.HS_API_KEY}`,
