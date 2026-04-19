@@ -1,0 +1,102 @@
+---
+title: Flash Analysis
+description: Instant on-device AI detection at half the credit cost.
+---
+
+## Endpoint
+
+```http
+POST /api/analyze/flash
+```
+
+Flash runs a distilled single-pass model on-device — no GPU queue, no cold start. Results return in under one second. Costs **0.5 credits** per minute of audio (billed as `ceil(minutes / 2)`).
+
+Use standard analysis when you need full multi-head detail, confidence tiers, or origin attribution. Use flash when speed matters more than depth.
+
+## Request
+
+`multipart/form-data` — send the audio file directly.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `file` | binary | Yes | Audio file (mp3, wav, flac, m4a) |
+
+## Example request
+
+<CodeGroup>
+```bash cURL
+curl -X POST https://app.jobsbyhumans.com/api/analyze/flash \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -F "file=@track.mp3"
+```
+
+```python Python
+import requests, os
+
+with open("track.mp3", "rb") as f:
+    result = requests.post(
+        "https://app.jobsbyhumans.com/api/analyze/flash",
+        headers={"Authorization": f"Bearer {os.environ['HS_API_KEY']}"},
+        files={"file": f},
+    ).json()
+```
+
+```typescript TypeScript
+const form = new FormData();
+form.append("file", audioBlob, "track.mp3");
+
+const result = await fetch("https://app.jobsbyhumans.com/api/analyze/flash", {
+  method: "POST",
+  headers: { "Authorization": `Bearer ${process.env.HS_API_KEY}` },
+  body: form,
+}).then(r => r.json());
+```
+</CodeGroup>
+
+## Response
+
+```json
+{
+  "status": "complete",
+  "engine": "flash-v1",
+  "filename": "track.mp3",
+  "summary": {
+    "verdict": "ai",
+    "ai_probability": 0.961,
+    "action_band": "block",
+    "reliability_score": 0.87,
+    "note": "Flash analysis — instant on-device result. Use standard analysis for full multi-head detail."
+  },
+  "credits_used": 0.5,
+  "credits_charged": 1
+}
+```
+
+## Response fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `summary.verdict` | string | `ai`, `suspicious`, or `human` |
+| `summary.ai_probability` | float | Raw model probability (0–1) |
+| `summary.action_band` | string | `block`, `review`, or `allow` |
+| `summary.reliability_score` | float | Fixed at `0.87` for flash engine |
+| `credits_used` | float | Always `0.5` |
+| `credits_charged` | integer | Actual credits deducted |
+
+## Verdict thresholds
+
+| Verdict | Condition | FPR |
+|---------|-----------|-----|
+| `ai` | probability ≥ 0.907 | ≤ 2% |
+| `suspicious` | probability ≥ 0.112 | ≤ 15% |
+| `human` | probability < 0.112 | — |
+
+Thresholds are calibrated on a held-out eval set. TPR at the `ai` threshold is 86%.
+
+## When to use flash
+
+- **Session tools / DAW plugins** — producers need instant feedback, not a 10-second wait
+- **Pre-filter before full analysis** — screen a large batch cheaply, send only flagged tracks for full analysis
+- **Rate-limited environments** — flash uses no GPU quota
+
+Flash does not return segment-level risk series, origin attribution, or confidence tier breakdowns. For those, use [Analyze Track](/api-reference/tracks/analyze).

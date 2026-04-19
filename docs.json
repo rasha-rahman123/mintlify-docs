@@ -74,6 +74,7 @@
             "group": "Tracks",
             "pages": [
               "api-reference/tracks/analyze",
+              "api-reference/tracks/analyze-flash",
               "api-reference/tracks/get"
             ]
           }
