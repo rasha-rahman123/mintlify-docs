@@ -85,13 +85,15 @@ const result = await fetch("https://app.jobsbyhumans.com/api/analyze/flash", {
 
 ## Verdict thresholds
 
-| Verdict | Condition | FPR |
-|---------|-----------|-----|
-| `ai` | probability ≥ 0.907 | ≤ 2% |
-| `suspicious` | probability ≥ 0.112 | ≤ 15% |
-| `human` | probability < 0.112 | — |
+| Verdict | Condition | Real-world FPR | AI TPR |
+|---------|-----------|----------------|--------|
+| `ai` | probability ≥ 0.930 | 1.7% | 77.7% |
+| `suspicious` | probability ≥ 0.800 | 6.0% | 93.2% |
+| `human` | probability < 0.800 | — | — |
 
-Thresholds are calibrated on a held-out eval set. TPR at the `ai` threshold is 86%.
+Calibrated against a 1,302-track real-world pop catalog (major-label releases spanning multiple labels and years) and a 672-track AI catalog covering Suno, Udio, Lyria, and four other generators.
+
+At the `ai` threshold, roughly 1–2 out of every 100 human songs will be flagged. Treat the `ai` verdict as evidence, not proof — for workflows that cannot tolerate false accusations, gate on the full [analyze endpoint](/api-reference/tracks/analyze) or require `press_safe` from the [confidence tiers](/guides/confidence-tiers).
 
 ## When to use flash
 
