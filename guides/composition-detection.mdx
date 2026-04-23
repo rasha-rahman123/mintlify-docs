@@ -1,0 +1,147 @@
+---
+title: Composition Detection
+description: Per-stem hybrid analysis for high-risk tracks that need stronger evidence than the default pass.
+---
+
+## Overview
+
+Composition detection is an opt-in deep scan. When enabled, the pipeline separates the track into stems (vocals, drums, bass, other), runs per-stem geometry scoring, and produces a hybrid verdict that combines stem-level evidence with the standard track-level score.
+
+Use it when:
+
+- The track-level verdict is borderline and you need corroborating evidence
+- A track is high-visibility and you want stem-level reasons in the record
+- A catalog ingestion policy requires full composition audit on flagged tracks
+
+Standard scans cost **1 credit per track**. Composition scans cost **3 credits per track**.
+
+## Enabling it
+
+### Bulk jobs
+
+Add `"composition_detection": true` to the `options` object when creating a job:
+
+```json
+{
+  "name": "viral-track-investigation",
+  "items": [
+    { "item_id": "song-001", "url": "https://your-cdn.com/song.mp3" }
+  ],
+  "options": {
+    "composition_detection": true
+  }
+}
+```
+
+The job creation response confirms the mode is active:
+
+```json
+{
+  "job_id": "49270aa9-...",
+  "status": "queued",
+  "credits_per_track": 3,
+  "composition_detection_enabled": true
+}
+```
+
+<CodeGroup>
+```python Python
+import requests, os
+
+job = requests.post(
+    "https://app.jobsbyhumans.com/bulk/jobs",
+    headers={"Authorization": f"Bearer {os.environ['HS_API_KEY']}"},
+    json={
+        "name": "viral-track-investigation",
+        "items": [
+            {"item_id": "song-001", "url": "https://your-cdn.com/song.mp3"},
+        ],
+        "options": {"composition_detection": True},
+    }
+).json()
+
+assert job["composition_detection_enabled"] is True
+print(job["job_id"])
+```
+
+```typescript TypeScript
+const job = await fetch("https://app.jobsbyhumans.com/bulk/jobs", {
+  method: "POST",
+  headers: {
+    "Authorization": `Bearer ${process.env.HS_API_KEY}`,
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    name: "viral-track-investigation",
+    items: [{ item_id: "song-001", url: "https://your-cdn.com/song.mp3" }],
+    options: { composition_detection: true },
+  }),
+}).then(r => r.json());
+
+console.log(job.job_id, job.composition_detection_enabled); // true
+```
+</CodeGroup>
+
+## Result fields
+
+When composition detection runs, each result record includes a `composition_analysis` object.
+
+### `composition_analysis`
+
+```json
+{
+  "enabled": true,
+  "credits_used": 3,
+  "verdict": "review",
+  "summary": "Composition-level scan found structural anomalies that warrant review.",
+  "composition_ai_score": 0.5039,
+  "per_stem": {
+    "vocals":  { "verdict": "human",      "ai_prob": 0.16, "confidence": "medium" },
+    "drums":   { "verdict": "suspicious", "ai_prob": 0.64, "confidence": "high"   },
+    "bass":    { "verdict": "human",      "ai_prob": 0.08, "confidence": "medium" },
+    "other":   { "verdict": "review",     "ai_prob": 0.43, "confidence": "high"   }
+  },
+  "reasons": [
+    "Stem trajectory path length is +1.2σ above human baseline.",
+    "Motion anomaly detected in bass, drums, other.",
+    "Learned composition model voted pure_ai at 50% confidence.",
+    "Final verdict was downgraded to review because class support stayed below the deployment threshold."
+  ]
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `verdict` | Composition-level verdict: `"human"`, `"suspicious"`, `"review"`, or `"inconclusive"` |
+| `composition_ai_score` | Blended AI probability across stems (0–1) |
+| `per_stem` | Per-stem breakdown — see below |
+| `summary` | One-sentence explanation of the verdict |
+| `reasons` | Ordered list of factors that determined the verdict |
+| `credits_used` | Always `3` for composition scans |
+
+### `per_stem`
+
+One entry per separated stem (`vocals`, `drums`, `bass`, `other`):
+
+| Field | Description |
+|-------|-------------|
+| `verdict` | `"human"`, `"suspicious"`, `"review"`, or `"inconclusive"` |
+| `ai_prob` | AI probability for this stem (0–1) |
+| `confidence` | Scoring confidence: `"high"`, `"medium"`, or `"low"` |
+
+## Verdict meanings
+
+| `verdict` | Meaning |
+|-----------|---------|
+| `"human"` | Composition evidence is consistent with fully human-made audio |
+| `"suspicious"` | Strong composition-level AI signal — recommend flagging |
+| `"review"` | AI signal present but below the high-confidence threshold. Send to manual review |
+| `"inconclusive"` | Composition pass failed or returned insufficient signal. Fall back to track-level verdict |
+
+When `verdict` is `"review"`, check `reasons` and individual `per_stem` entries to decide which stems drove the flag.
+
+## Processing time
+
+Composition scans separate the audio into stems before analysis and are materially slower than standard scans. Expect roughly 3–5× the processing time of a standard job. Poll the job status endpoint and use a webhook for large batches.
+
+See [Webhooks](/guides/webhooks) and [Bulk Jobs](/guides/bulk-jobs) for polling and notification patterns.
