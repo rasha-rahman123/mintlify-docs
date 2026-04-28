@@ -18,11 +18,18 @@ Your actual storage credentials and permanent URLs are never shared.
 In the dashboard under **Settings → Integrations**, enter:
 
 - **Signed URL Endpoint**: A URL on your server we can POST to (e.g. `https://yourapi.com/internal/signed-url`)
-- **Endpoint Secret**: A secret we include in every request so you can verify it came from us
+- **Authentication**: Optional request auth for that endpoint. Supported modes are `None`, `Bearer token`, `Basic auth`, `Custom header`, and `Query param`
 
-## How it works
+If you want to keep the `X-HS-Secret` pattern, choose **Custom header** and set:
 
-When we need to fetch an audio file, we POST to your endpoint:
+- Header name: `X-HS-Secret`
+- Header value: your shared secret
+
+## Request format
+
+When we need to fetch an audio file, we POST JSON to your endpoint. The auth mechanism depends on what you configured in the dashboard.
+
+Example using **Custom header** auth with `X-HS-Secret`:
 
 ```json
 POST https://yourapi.com/internal/signed-url
@@ -33,6 +40,12 @@ X-HS-Secret: your_endpoint_secret
   "job_id": "job_uuid_here"
 }
 ```
+
+If you choose **Bearer token**, we send `Authorization: Bearer ...`.
+
+If you choose **Basic auth**, we send the standard HTTP Basic auth header.
+
+If you choose **Query param**, we append the configured key and value to the request URL.
 
 Your server responds with a temporary URL:
 
@@ -45,6 +58,8 @@ Your server responds with a temporary URL:
 We download from that URL immediately. The URL only needs to be valid for ~60 seconds.
 
 ## Implementation examples
+
+The examples below assume you configured **Custom header** auth in the dashboard with `X-HS-Secret`.
 
 <CodeGroup>
 ```python Python (FastAPI)
