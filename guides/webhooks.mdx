@@ -15,9 +15,11 @@ Set your webhook URL when creating a job:
 {
   "name": "My Scan",
   "items": [...],
-  "webhook_url": "https://yourapi.com/webhooks/hs"
+  "webhook": "https://yourapi.com/webhooks/hs"
 }
 ```
+
+`webhook` is optional and applies only to that submission. If present, it overrides the default webhook URL for the organization.
 
 Or set a default webhook URL for all jobs in **Settings → Integrations → Default Webhook URL**.
 

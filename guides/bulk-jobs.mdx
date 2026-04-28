@@ -28,9 +28,11 @@ Content-Type: application/json
     { "item_id": "track-002", "url": "https://cdn.example.com/02.mp3" },
     { "item_id": "track-003", "url": "https://cdn.example.com/03.mp3" }
   ],
-  "webhook_url": "https://yourapi.com/webhooks/humanstandard"
+  "webhook": "https://yourapi.com/webhooks/humanstandard"
 }
 ```
+
+`webhook` is optional. If you send it, that URL is used for this job and overrides any default webhook configured at the organization level.
 
 <CodeGroup>
 ```python Python
@@ -45,11 +47,11 @@ job = requests.post(
             {"item_id": "track-001", "url": "https://cdn.example.com/01.mp3"},
             {"item_id": "track-002", "url": "https://cdn.example.com/02.mp3"},
         ],
-        "webhook_url": "https://yourapi.com/webhooks/hs",
-    }
+        "webhook": "https://yourapi.com/webhooks/hs",
+    },
 ).json()
 
-print(job["id"])  # job_abc123
+print(job["job_id"])  # 49270aa9-...
 print(job["status"])  # "queued"
 ```
 
@@ -66,11 +68,11 @@ const job = await fetch("https://app.jobsbyhumans.com/bulk/jobs", {
       { item_id: "track-001", url: "https://cdn.example.com/01.mp3" },
       { item_id: "track-002", url: "https://cdn.example.com/02.mp3" },
     ],
-    webhook_url: "https://yourapi.com/webhooks/hs",
+    webhook: "https://yourapi.com/webhooks/hs",
   }),
 }).then(r => r.json());
 
-console.log(job.id);     // job_abc123
+console.log(job.job_id); // 49270aa9-...
 console.log(job.status); // "queued"
 ```
 </CodeGroup>
@@ -113,7 +115,7 @@ Results are returned as newline-delimited JSON (NDJSON), one record per track. S
 
 ## Webhook delivery
 
-If you provide a `webhook_url`, we call it when the job completes:
+If you provide `webhook`, we call that URL when the job completes:
 
 ```json
 {
@@ -138,7 +140,7 @@ For catalogs over 10,000 tracks, use a **manifest URL** instead of an inline ite
 {
   "name": "Full Catalog",
   "manifest_url": "https://your-storage.com/manifest.ndjson",
-  "webhook_url": "https://yourapi.com/webhooks/hs"
+  "webhook": "https://yourapi.com/webhooks/hs"
 }
 ```
 
