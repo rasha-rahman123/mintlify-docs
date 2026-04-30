@@ -25,20 +25,23 @@
         ],
         "requestBody": {
           "required": true,
+          "description": "Send exactly one of `file` (multipart) or `url` (JSON).",
           "content": {
-            "multipart/form-data": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "file": { "type": "string", "format": "binary", "description": "Audio file upload" }
-                }
-              }
-            },
             "application/json": {
               "schema": {
                 "type": "object",
+                "required": ["url"],
                 "properties": {
-                  "url": { "type": "string", "description": "Publicly accessible audio URL" }
+                  "url": { "type": "string", "description": "Publicly accessible audio URL. The server downloads it before analysis." }
+                }
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": ["file"],
+                "properties": {
+                  "file": { "type": "string", "format": "binary", "description": "Audio file upload (mp3, wav, flac, m4a, etc.)" }
                 }
               }
             }

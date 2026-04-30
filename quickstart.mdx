@@ -3,7 +3,7 @@ title: Getting Started
 description: From API key to your first verdict in under 5 minutes.
 ---
 
-You'll do three things: **get a key, submit a track, read the verdict.** All four code samples below show the same flow — pick your language.
+You'll do three things: **get a key, submit a track, read the verdict.** Pick your language below — the flow is the same for all of them.
 
 ## 1. Get an API key
 
@@ -19,17 +19,22 @@ export HS_API_KEY=hs_your_key_here
 
 ## 2. Submit and poll
 
-`POST /api/analyze` returns a `job_id` immediately. Poll `/api/jobs/{job_id}/status` until `status` is `complete`. Cold starts take ~20–30s; subsequent calls are faster.
+`POST /api/analyze` accepts either a public URL (JSON) or a file upload (multipart). It returns a `job_id` immediately — poll `/api/jobs/{job_id}/status` until `status` is `complete`. Cold starts take ~20–30s; subsequent calls are faster.
+
+Have many tracks at once? Use [`/bulk/jobs`](/guides/bulk-jobs) instead.
+
+### Submitting by URL
 
 <CodeGroup>
 ```bash cURL
 BASE_URL="https://app.jobsbyhumans.com"
 AUTH="Authorization: Bearer $HS_API_KEY"
 
-# Submit the track. Returns { "job_id": "...", "status": "queued" }.
+# Submit a public URL.
 job_id=$(curl -s -X POST "$BASE_URL/api/analyze" \
   -H "$AUTH" \
-  -F "file=@track.mp3" | jq -r .job_id)
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://your-cdn.com/track.mp3"}' | jq -r .job_id)
 
 # Poll until complete.
 while :; do
@@ -42,6 +47,39 @@ while :; do
 done
 ```
 
+```ruby Ruby
+require "faraday"
+
+BASE_URL = "https://app.jobsbyhumans.com"
+
+client = Faraday.new(url: BASE_URL) do |f|
+  f.request :json
+  f.response :json
+  f.headers["Authorization"] = "Bearer #{ENV.fetch('HS_API_KEY')}"
+end
+
+def submit_url(client, url)
+  response = client.post("/api/analyze", { url: url })
+  raise "submit failed: #{response.status} #{response.body}" unless response.success?
+  response.body.fetch("job_id")
+end
+
+def wait_for_result(client, job_id, timeout_seconds: 300)
+  deadline = Time.now + timeout_seconds
+  while Time.now < deadline
+    status = client.get("/api/jobs/#{job_id}/status").body
+    return status.fetch("result") if status["status"] == "complete"
+    raise status["error"] || "analysis failed" if status["status"] == "failed"
+    sleep 2
+  end
+  raise "job #{job_id} did not complete in #{timeout_seconds}s"
+end
+
+job_id = submit_url(client, "https://your-cdn.com/track.mp3")
+result = wait_for_result(client, job_id)
+puts "#{result['verdict']} (#{result['confidence']})"
+```
+
 ```python Python
 import os
 import time
@@ -51,26 +89,20 @@ BASE_URL = "https://app.jobsbyhumans.com"
 HEADERS = {"Authorization": f"Bearer {os.environ['HS_API_KEY']}"}
 
 
-def submit_track(path: str) -> str:
-    """Upload a file. Returns the job_id to poll."""
-    with open(path, "rb") as audio:
-        response = requests.post(
-            f"{BASE_URL}/api/analyze",
-            headers=HEADERS,
-            files={"file": audio},
-        )
+def submit_url(url: str) -> str:
+    response = requests.post(
+        f"{BASE_URL}/api/analyze",
+        headers=HEADERS,
+        json={"url": url},
+    )
     response.raise_for_status()
     return response.json()["job_id"]
 
 
 def wait_for_result(job_id: str, timeout_seconds: int = 300) -> dict:
-    """Poll until the job completes. Returns the result dict."""
     deadline = time.monotonic() + timeout_seconds
     while time.monotonic() < deadline:
-        status = requests.get(
-            f"{BASE_URL}/api/jobs/{job_id}/status",
-            headers=HEADERS,
-        ).json()
+        status = requests.get(f"{BASE_URL}/api/jobs/{job_id}/status", headers=HEADERS).json()
         if status["status"] == "complete":
             return status["result"]
         if status["status"] == "failed":
@@ -79,26 +111,23 @@ def wait_for_result(job_id: str, timeout_seconds: int = 300) -> dict:
     raise TimeoutError(f"job {job_id} did not complete in {timeout_seconds}s")
 
 
-job_id = submit_track("track.mp3")
+job_id = submit_url("https://your-cdn.com/track.mp3")
 result = wait_for_result(job_id)
 print(result["verdict"], result["confidence"])
 ```
 
 ```typescript TypeScript
-import { readFile } from "node:fs/promises";
-
 const BASE_URL = "https://app.jobsbyhumans.com";
-const headers = { Authorization: `Bearer ${process.env.HS_API_KEY}` };
+const headers = {
+  Authorization: `Bearer ${process.env.HS_API_KEY}`,
+  "Content-Type": "application/json",
+};
 
-async function submitTrack(path: string): Promise<string> {
-  const audio = await readFile(path);
-  const form = new FormData();
-  form.append("file", new Blob([audio]), path);
-
+async function submitUrl(url: string): Promise<string> {
   const response = await fetch(`${BASE_URL}/api/analyze`, {
     method: "POST",
     headers,
-    body: form,
+    body: JSON.stringify({ url }),
   });
   if (!response.ok) throw new Error(`submit failed: ${response.status}`);
   const { job_id } = await response.json();
@@ -117,45 +146,55 @@ async function waitForResult(jobId: string, timeoutMs = 300_000): Promise<any> {
   throw new Error(`job ${jobId} did not complete in time`);
 }
 
-const jobId = await submitTrack("track.mp3");
+const jobId = await submitUrl("https://your-cdn.com/track.mp3");
 const result = await waitForResult(jobId);
 console.log(result.verdict, result.confidence);
+```
+</CodeGroup>
+
+### Submitting a local file
+
+If you have the audio bytes locally, send them as a multipart upload. The polling step is identical — same endpoint, same response.
+
+<CodeGroup>
+```bash cURL
+curl -s -X POST "$BASE_URL/api/analyze" \
+  -H "$AUTH" \
+  -F "file=@track.mp3"
 ```
 
 ```ruby Ruby
 require "faraday"
 require "faraday/multipart"
 
-BASE_URL = "https://app.jobsbyhumans.com"
+# Reuse the `client` from the URL example above, but add the multipart middleware:
+# Faraday.new(url: BASE_URL) { |f| f.request :multipart; f.request :json; f.response :json; ... }
 
-client = Faraday.new(url: BASE_URL) do |f|
-  f.request :multipart
-  f.request :json
-  f.response :json
-  f.headers["Authorization"] = "Bearer #{ENV.fetch('HS_API_KEY')}"
-end
+payload = { file: Faraday::Multipart::FilePart.new("track.mp3", "audio/mpeg") }
+job_id = client.post("/api/analyze", payload).body.fetch("job_id")
+```
 
-def submit_track(client, path)
-  payload = { file: Faraday::Multipart::FilePart.new(path, "audio/mpeg") }
-  response = client.post("/api/analyze", payload)
-  raise "submit failed: #{response.status}" unless response.success?
-  response.body.fetch("job_id")
-end
+```python Python
+with open("track.mp3", "rb") as audio:
+    job_id = requests.post(
+        f"{BASE_URL}/api/analyze",
+        headers=HEADERS,
+        files={"file": audio},
+    ).json()["job_id"]
+```
 
-def wait_for_result(client, job_id, timeout_seconds: 300)
-  deadline = Time.now + timeout_seconds
-  while Time.now < deadline
-    status = client.get("/api/jobs/#{job_id}/status").body
-    return status.fetch("result") if status["status"] == "complete"
-    raise status["error"] || "analysis failed" if status["status"] == "failed"
-    sleep 2
-  end
-  raise "job #{job_id} did not complete in #{timeout_seconds}s"
-end
+```typescript TypeScript
+import { readFile } from "node:fs/promises";
 
-job_id = submit_track(client, "track.mp3")
-result = wait_for_result(client, job_id)
-puts "#{result['verdict']} (#{result['confidence']})"
+const audio = await readFile("track.mp3");
+const form = new FormData();
+form.append("file", new Blob([audio]), "track.mp3");
+
+const { job_id } = await fetch(`${BASE_URL}/api/analyze`, {
+  method: "POST",
+  headers: { Authorization: `Bearer ${process.env.HS_API_KEY}` },
+  body: form,
+}).then(r => r.json());
 ```
 </CodeGroup>
 
@@ -185,7 +224,7 @@ puts "#{result['verdict']} (#{result['confidence']})"
 | `model_version` | string | Detector calibration version |
 | `processed_at` | string | ISO 8601 UTC timestamp |
 
-That's the whole API. Three fields are usually all you need: `verdict`, `confidence`, `origin`.
+Three fields are usually all you need: `verdict`, `confidence`, `origin`.
 
 ## 4. Act on the result
 
@@ -207,11 +246,10 @@ if result["verdict"] == "ai" and result["confidence"] >= 0.85:
 
 ## Need more detail?
 
-Pass `?detail=full` to extend the response with `risk_segments` (timestamped per-window risk) and `tier_verdicts` (three operating points: strict / default / lenient). Same field naming, same taxonomy — `detail=full` only **adds** to the response.
+Pass `?detail=full` when polling to extend the response with `risk_segments` (timestamped per-window risk) and `tier_verdicts` (three operating points: strict / default / lenient). `detail=full` only **adds** to the response — same field names, same taxonomy.
 
 ```bash
-curl "https://app.jobsbyhumans.com/api/jobs/$JOB/status?detail=full" \
-  -H "Authorization: Bearer $HS_API_KEY"
+curl "$BASE_URL/api/jobs/$job_id/status?detail=full" -H "$AUTH"
 ```
 
 See [Response Shapes](/guides/simplified-responses) for the full picture.
@@ -240,3 +278,5 @@ See [Response Shapes](/guides/simplified-responses) for the full picture.
 **`404 Job not found` while polling** — make sure you're polling `/api/jobs/{job_id}/status`, not `/bulk/jobs/{job_id}`. They're different services with separate ID spaces.
 
 **Long cold start (~30s)** — first request after idle has to warm a GPU. Set your poll timeout to at least 60s and your read timeout to 30s.
+
+**`Could not download audio from URL`** — the URL must be publicly reachable from our servers. For private storage, generate a signed URL first. See [Signed URLs](/guides/signed-urls).

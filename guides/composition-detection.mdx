@@ -45,6 +45,19 @@ The job creation response confirms the mode is active:
 ```
 
 <CodeGroup>
+```bash cURL
+curl -X POST https://app.jobsbyhumans.com/bulk/jobs \
+  -H "Authorization: Bearer $HS_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "viral-track-investigation",
+    "items": [
+      { "item_id": "song-001", "url": "https://your-cdn.com/song.mp3" }
+    ],
+    "options": { "composition_detection": true }
+  }'
+```
+
 ```python Python
 import requests, os
 

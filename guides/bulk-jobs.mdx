@@ -35,6 +35,20 @@ Content-Type: application/json
 `webhook` is optional. If you send it, that URL is used for this job and overrides any default webhook configured at the organization level.
 
 <CodeGroup>
+```bash cURL
+curl -X POST https://app.jobsbyhumans.com/bulk/jobs \
+  -H "Authorization: Bearer $HS_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Q1 Catalog Scan",
+    "items": [
+      { "item_id": "track-001", "url": "https://cdn.example.com/01.mp3" },
+      { "item_id": "track-002", "url": "https://cdn.example.com/02.mp3" }
+    ],
+    "webhook": "https://yourapi.com/webhooks/hs"
+  }'
+```
+
 ```python Python
 import requests, os
 
