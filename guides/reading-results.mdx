@@ -7,107 +7,87 @@ description: How to parse a HumanStandard result and route it.
 
 ```json
 {
-  "item_id": "track-001",
-  "status": "success",
-
-  "verdict": "suspicious",
-  "tier_verdicts": {
-    "press_safe": null,
-    "human_safe": "suspicious",
-    "recall": "suspicious"
-  },
-
-  "scores": {
-    "confidence_score": 0.87,
-    "geometry_score": 0.79,
-    "prototype_score": 0.74,
-    "spectral_score": 0.91,
-    "frequency_artifact_score": 0.83,
-    "temporal_consistency_score": 0.77,
-    "representation_score": 0.68,
-    "reliability": 0.88
-  },
-
+  "verdict": "ai",
+  "confidence": 0.91,
   "origin": "suno",
   "origin_confidence": 0.82,
-  "calibration_version": "2026-01-12",
-
-  "risk_series": [0.12, 0.14, 0.88, 0.91, 0.89, 0.87],
-  "processed_at": "2026-02-27T10:43:01Z"
+  "risk_timeline": [0.12, 0.14, 0.88, 0.91, 0.89, 0.87],
+  "duration_sec": 187.4,
+  "model_version": "2026-04-29",
+  "processed_at": "2026-04-29T10:43:01Z"
 }
 ```
 
-## Routing
-
-Use `tier_verdicts` for all routing decisions. It gives you three simultaneous verdicts at different confidence levels:
-
-| Field | Values | Use it for |
-|-------|--------|-----------|
-| `tier_verdicts.press_safe` | `"human"` / `"suspicious"` / `null` | Press-chain default gate, certification, licensing submissions |
-| `tier_verdicts.human_safe` | `"human"` / `"suspicious"` | Distribution-layer auto-reject at intake |
-| `tier_verdicts.recall` | `"human"` / `"suspicious"` | Escalation to manual review |
-
-See [Confidence Tiers](/guides/confidence-tiers) for the false positive rate at each tier.
+Bulk records add `item_id` (the identifier you supplied at submit time). Everything else is identical.
 
 ## Key fields
 
 | Field | What it's for |
 |-------|--------------|
-| `verdict` | Top-level result at your operating tier — `"human"` or `"suspicious"` |
-| `confidence_score` | Overall AI probability (0–1). Use for displaying confidence to reviewers |
-| `geometry_score` | Multi-signal corroborating score. Stable across audio processing variations |
-| `prototype_score` | Score driving the press-safe tier. Include in certification records |
-| `risk_series` | AI probability across the track timeline — shows which sections triggered |
-| `origin` | Predicted generator: `"suno"`, `"udio"`, `"elevenlabs"`, `"human"`, `"unknown"` |
-| `calibration_version` | Model version that produced this result. Include in audit records |
-| `reliability` | Result confidence based on audio quality. Below `0.6` — treat with extra caution |
+| `verdict` | Final classification — `"ai"`, `"human"`, or `"uncertain"` |
+| `confidence` | Confidence in the verdict (0–1). Use for display and threshold-based routing |
+| `origin` | Predicted generator when AI: `"suno"`, `"udio"`, `"elevenlabs"`, etc. |
+| `origin_confidence` | Confidence in origin attribution (0–1) |
+| `risk_timeline` | Per-window AI probability across the track. Shows which sections triggered |
+| `duration_sec` | Audio duration in seconds |
+| `model_version` | Detector calibration version. Include in audit records |
+| `processed_at` | When analysis completed (ISO 8601 UTC) |
 
-## Routing code
+## Routing on `verdict`
 
 ```python Python
 def route(record: dict) -> str:
-    tier = record.get("tier_verdicts") or {}
-
-    if tier.get("press_safe") == "suspicious":
+    if record["verdict"] == "ai":
         return "reject"
-
-    if tier.get("human_safe") == "suspicious":
-        return "reject"
-
-    if tier.get("recall") == "suspicious":
+    if record["verdict"] == "uncertain":
         return "manual_review"
-
     return "approve"
 ```
 
 ```typescript TypeScript
 function route(record: Record<string, any>): string {
-  const tier = record.tier_verdicts ?? {};
-
-  if (tier.press_safe === "suspicious") return "reject";
-  if (tier.human_safe === "suspicious") return "reject";
-  if (tier.recall === "suspicious") return "manual_review";
+  if (record.verdict === "ai") return "reject";
+  if (record.verdict === "uncertain") return "manual_review";
   return "approve";
 }
 ```
 
-See [Supply Chain Filtering](/guides/use-case-supply-chain) for the full escalation flow with error handling.
+For threshold-based routing (e.g. only reject when `confidence >= 0.85`), gate on `confidence` alongside `verdict`.
+
+## Tier verdicts (advanced)
+
+If you need different operating points — e.g. a strict gate for press releases and a permissive gate for internal review — pass `?detail=full` and read `tier_verdicts`:
+
+```json
+{
+  "tier_verdicts": {
+    "press_safe": "uncertain",
+    "human_safe": "ai",
+    "recall": "ai"
+  }
+}
+```
+
+| Tier | Use it for |
+|------|-----------|
+| `press_safe` | Press-chain default gate, certification, licensing submissions |
+| `human_safe` | Distribution-layer auto-reject at intake |
+| `recall` | Escalation to manual review |
+
+Each tier uses the same `ai` / `human` / `uncertain` taxonomy as top-level `verdict`. See [Confidence Tiers](/guides/confidence-tiers) for the false-positive rate at each tier.
 
 ## Handling failures
 
-Check `status` before reading `verdict`. On failure, `verdict` is `null` and the `error` / `error_code` fields explain what went wrong:
+Bulk records may include a `status` field. On failure, `verdict` is absent and `error` / `error_code` describe what went wrong:
 
 ```json
 {
   "item_id": "track-005",
   "status": "failed",
-  "verdict": null,
   "error": "Could not download audio: access denied (403). Ensure the URL is publicly accessible.",
   "error_code": "source_forbidden"
 }
 ```
-
-The `error` field is a human-readable message. The `error_code` field is a machine-readable code you can switch on programmatically:
 
 | Code | Meaning |
 |------|---------|
@@ -120,7 +100,3 @@ The `error` field is a human-readable message. The `error_code` field is a machi
 | `analysis_error` | Catch-all for other failures |
 
 Always route failed tracks to manual review — never auto-reject on an analysis failure.
-
-<Tip>
-  For lightweight integrations, use `?detail=simple` to get a reduced response with the same error fields. See [Simplified Responses](/guides/simplified-responses).
-</Tip>

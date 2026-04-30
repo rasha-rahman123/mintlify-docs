@@ -1,94 +1,137 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "OpenAPI Plant Store",
-    "description": "A sample API that uses a plant store as an example to demonstrate features in the OpenAPI specification",
-    "license": {
-      "name": "MIT"
-    },
+    "title": "HumanStandard Detector API",
+    "description": "AI music detection API. Submit audio, get a verdict.",
     "version": "1.0.0"
   },
   "servers": [
-    {
-      "url": "http://sandbox.mintlify.com"
-    }
+    { "url": "https://app.jobsbyhumans.com" }
   ],
-  "security": [
-    {
-      "bearerAuth": []
-    }
-  ],
+  "security": [{ "bearerAuth": [] }],
   "paths": {
-    "/plants": {
-      "get": {
-        "description": "Returns all plants from the system that the user has access to",
+    "/api/analyze": {
+      "post": {
+        "summary": "Analyze a single audio track",
+        "description": "Submit a single track for analysis. Returns a job_id immediately. Poll /api/jobs/{job_id}/status until complete.",
         "parameters": [
           {
-            "name": "limit",
+            "name": "detail",
             "in": "query",
-            "description": "The maximum number of results to return",
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
+            "description": "Pass `full` to extend the polled result with scores, risk_segments, and tier_verdicts.",
+            "required": false,
+            "schema": { "type": "string", "enum": ["full"] }
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": { "type": "string", "format": "binary", "description": "Audio file upload" }
+                }
+              }
+            },
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "url": { "type": "string", "description": "Publicly accessible audio URL" }
+                }
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
-            "description": "Plant response",
+            "description": "Job accepted; poll the returned job_id.",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/Plant"
+                  "type": "object",
+                  "properties": {
+                    "job_id": { "type": "string" },
+                    "status": { "type": "string", "example": "queued" }
                   }
                 }
               }
             }
           },
-          "400": {
-            "description": "Unexpected error",
+          "401": { "description": "Missing or invalid API key" },
+          "429": { "description": "Rate limit reached" }
+        }
+      }
+    },
+    "/api/jobs/{job_id}/status": {
+      "get": {
+        "summary": "Poll a single-track job",
+        "parameters": [
+          { "name": "job_id", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "detail", "in": "query", "required": false, "schema": { "type": "string", "enum": ["full"] } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current job status. When `status` is `complete`, `result` contains the analysis.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Error"
+                  "type": "object",
+                  "properties": {
+                    "job_id": { "type": "string" },
+                    "status": { "type": "string", "enum": ["queued", "processing", "complete", "failed"] },
+                    "result": { "$ref": "#/components/schemas/AnalysisResult" }
+                  }
+                }
+              }
+            }
+          },
+          "404": { "description": "Job not found" }
+        }
+      }
+    },
+    "/bulk/jobs": {
+      "post": {
+        "summary": "Submit a bulk analysis job",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["items"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "items": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": ["item_id", "url"],
+                      "properties": {
+                        "item_id": { "type": "string" },
+                        "url": { "type": "string" }
+                      }
+                    }
+                  }
                 }
               }
             }
           }
-        }
-      },
-      "post": {
-        "description": "Creates a new plant in the store",
-        "requestBody": {
-          "description": "Plant to add to the store",
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/NewPlant"
-              }
-            }
-          },
-          "required": true
         },
         "responses": {
           "200": {
-            "description": "plant response",
+            "description": "Job accepted",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Plant"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "unexpected error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
+                  "type": "object",
+                  "properties": {
+                    "job_id": { "type": "string" },
+                    "status": { "type": "string" },
+                    "results_url": { "type": "string" },
+                    "summary_url": { "type": "string" }
+                  }
                 }
               }
             }
@@ -96,121 +139,95 @@
         }
       }
     },
-    "/plants/{id}": {
-      "delete": {
-        "description": "Deletes a single plant based on the ID supplied",
+    "/bulk/jobs/{job_id}/results": {
+      "get": {
+        "summary": "Stream bulk job results (NDJSON)",
         "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "ID of plant to delete",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
+          { "name": "job_id", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "detail", "in": "query", "required": false, "schema": { "type": "string", "enum": ["full"] } }
         ],
         "responses": {
-          "204": {
-            "description": "Plant deleted",
-            "content": {}
-          },
-          "400": {
-            "description": "unexpected error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  },
-  "webhooks": {
-    "/plant/webhook": {
-      "post": {
-        "description": "Information about a new plant added to the store",
-        "requestBody": {
-          "description": "Plant added to the store",
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/NewPlant"
-              }
-            }
-          }
-        },
-        "responses": {
           "200": {
-            "description": "Return a 200 status to indicate that the data was received successfully"
+            "description": "NDJSON stream — one AnalysisResult (with item_id) per line.",
+            "content": {
+              "application/x-ndjson": {
+                "schema": { "$ref": "#/components/schemas/BulkResultRecord" }
+              }
+            }
           }
         }
       }
     }
   },
   "components": {
+    "securitySchemes": {
+      "bearerAuth": { "type": "http", "scheme": "bearer", "description": "API key issued from the dashboard. Format: `hs_...`" }
+    },
     "schemas": {
-      "Plant": {
-        "required": [
-          "name"
-        ],
+      "AnalysisResult": {
         "type": "object",
+        "required": ["verdict", "confidence", "risk_timeline", "duration_sec", "model_version", "processed_at"],
         "properties": {
-          "name": {
-            "description": "The name of the plant",
-            "type": "string"
+          "verdict": { "type": "string", "enum": ["ai", "human", "uncertain"] },
+          "confidence": { "type": "number", "format": "float", "minimum": 0, "maximum": 1 },
+          "origin": { "type": "string", "nullable": true, "description": "Detected generator when AI (suno, udio, elevenlabs, etc.)" },
+          "origin_confidence": { "type": "number", "format": "float", "nullable": true, "minimum": 0, "maximum": 1 },
+          "risk_timeline": {
+            "type": "array",
+            "items": { "type": "number", "format": "float", "minimum": 0, "maximum": 1 },
+            "description": "Per-window AI probability (~2.5s windows)"
           },
-          "tag": {
-            "description": "Tag to specify the type",
-            "type": "string"
+          "duration_sec": { "type": "number", "format": "float" },
+          "model_version": { "type": "string" },
+          "processed_at": { "type": "string", "format": "date-time" },
+          "scores": {
+            "type": "object",
+            "description": "Present only when ?detail=full",
+            "properties": {
+              "spectral": { "type": "number", "nullable": true },
+              "temporal": { "type": "number", "nullable": true },
+              "representation": { "type": "number", "nullable": true },
+              "geometry": { "type": "number", "nullable": true },
+              "reliability": { "type": "number", "nullable": true }
+            }
+          },
+          "risk_segments": {
+            "type": "array",
+            "description": "Present only when ?detail=full",
+            "items": {
+              "type": "object",
+              "properties": {
+                "start": { "type": "number" },
+                "end": { "type": "number" },
+                "risk": { "type": "number", "minimum": 0, "maximum": 1 }
+              }
+            }
+          },
+          "tier_verdicts": {
+            "type": "object",
+            "description": "Present only when ?detail=full. Each value uses the same ai/human/uncertain taxonomy as `verdict`.",
+            "properties": {
+              "press_safe": { "type": "string", "enum": ["ai", "human", "uncertain"], "nullable": true },
+              "human_safe": { "type": "string", "enum": ["ai", "human", "uncertain"], "nullable": true },
+              "recall": { "type": "string", "enum": ["ai", "human", "uncertain"], "nullable": true }
+            }
           }
         }
       },
-      "NewPlant": {
+      "BulkResultRecord": {
         "allOf": [
+          { "$ref": "#/components/schemas/AnalysisResult" },
           {
-            "$ref": "#/components/schemas/Plant"
-          },
-          {
-            "required": [
-              "id"
-            ],
             "type": "object",
+            "required": ["item_id"],
             "properties": {
-              "id": {
-                "description": "Identification number of the plant",
-                "type": "integer",
-                "format": "int64"
-              }
+              "item_id": { "type": "string", "description": "Identifier you supplied at submit time" },
+              "status": { "type": "string", "enum": ["success", "failed"] },
+              "error": { "type": "string", "nullable": true },
+              "error_code": { "type": "string", "nullable": true }
             }
           }
         ]
-      },
-      "Error": {
-        "required": [
-          "error",
-          "message"
-        ],
-        "type": "object",
-        "properties": {
-          "error": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "message": {
-            "type": "string"
-          }
-        }
-      }
-    },
-    "securitySchemes": {
-      "bearerAuth": {
-        "type": "http",
-        "scheme": "bearer"
       }
     }
   }

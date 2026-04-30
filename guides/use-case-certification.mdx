@@ -5,13 +5,15 @@ description: Issue near-zero-FPR attestations of human origin for licensing, roy
 
 ## `press_safe` tier
 
-`press_safe` evaluates `prototype_score` against a threshold calibrated at **0% FPR on both clean and hard-negative human tracks**. Use it when a false positive carries reputational or legal consequences: royalty pool submissions, sync licensing, human-only platform ingestion.
+The `press_safe` tier is calibrated at **~0% FPR on both clean and hard-negative human tracks**. Use it when a false positive carries reputational or legal consequences: royalty-pool submissions, sync licensing, human-only platform ingestion.
+
+`press_safe` is returned in `tier_verdicts` when you call the API with `?detail=full`.
 
 | Value | Action |
 |-------|--------|
 | `"human"` | Issue certification |
-| `"suspicious"` | Reject — acoustic evidence of AI origin |
-| `null` | Inconclusive — route to expert review, do not certify |
+| `"ai"` | Reject — acoustic evidence of AI origin |
+| `"uncertain"` | Inconclusive — escalate to human expert review, do not certify |
 
 ## Flow
 
@@ -19,129 +21,118 @@ description: Issue near-zero-FPR attestations of human origin for licensing, roy
 Track submitted
      │
      ▼
-Analyze with HumanStandard
+Analyze with HumanStandard (?detail=full)
      │
      ▼
-┌────────────────────────┐
-│ tier_verdicts.press_safe│
-└────────────────────────┘
+┌──────────────────────────┐
+│ tier_verdicts.press_safe │
+└──────────────────────────┘
      │
-     ├── "human"      → ✅ Issue certification
-     ├── "suspicious" → ❌ Reject / flag as AI-origin
-     └── null         → ⚠️  Inconclusive → escalate to human expert review
+     ├── "human"     → ✅ Issue certification
+     ├── "ai"        → ❌ Reject / flag as AI-origin
+     └── "uncertain" → ⚠️  Escalate to human expert review
 ```
 
 ## Implementation
 
 ```python Python
-import requests, os
+import os, time, requests
+
+API = "https://app.jobsbyhumans.com"
+H = {"Authorization": f"Bearer {os.environ['HS_API_KEY']}"}
+
+def analyze_full(audio_url: str) -> dict:
+    job = requests.post(f"{API}/api/analyze", headers=H, json={"url": audio_url}).json()
+    while True:
+        s = requests.get(f"{API}/api/jobs/{job['job_id']}/status?detail=full", headers=H).json()
+        if s["status"] == "complete":
+            return s["result"]
+        time.sleep(2)
 
 def certify_track(audio_url: str) -> dict:
-    result = requests.post(
-        "https://app.jobsbyhumans.com/api/analyze",
-        headers={"Authorization": f"Bearer {os.environ['HS_API_KEY']}"},
-        json={"url": audio_url}
-    ).json()
-
+    result = analyze_full(audio_url)
     press_safe = (result.get("tier_verdicts") or {}).get("press_safe")
-    proto_score = (result.get("scores") or {}).get("prototype_score")
 
     if press_safe == "human":
         return {
             "decision": "certified",
-            "confidence": "press-safe",
-            "proto_score": proto_score,
-            "message": "Acoustic evidence consistent with human origin at press-safe confidence."
+            "confidence_tier": "press_safe",
+            "confidence": result["confidence"],
+            "model_version": result["model_version"],
+            "processed_at": result["processed_at"],
+            "message": "Acoustic evidence consistent with human origin at press-safe confidence.",
         }
-    elif press_safe == "suspicious":
+
+    if press_safe == "ai":
         return {
             "decision": "rejected",
-            "confidence": "press-safe",
-            "proto_score": proto_score,
+            "confidence_tier": "press_safe",
+            "confidence": result["confidence"],
             "origin": result.get("origin"),
-            "message": "Acoustic evidence of AI-generated origin detected."
+            "model_version": result["model_version"],
+            "message": "Acoustic evidence of AI-generated origin detected.",
         }
-    else:
-        # null — inconclusive at press-safe level
-        human_safe = (result.get("tier_verdicts") or {}).get("human_safe")
-        return {
-            "decision": "review",
-            "confidence": "inconclusive",
-            "human_safe_verdict": human_safe,
-            "proto_score": proto_score,
-            "message": "Insufficient acoustic evidence at press-safe threshold. Expert review required."
-        }
+
+    return {
+        "decision": "review",
+        "confidence_tier": "inconclusive",
+        "human_safe_verdict": (result.get("tier_verdicts") or {}).get("human_safe"),
+        "model_version": result["model_version"],
+        "message": "Insufficient acoustic evidence at press-safe threshold. Expert review required.",
+    }
 ```
 
 ```typescript TypeScript
-interface CertificationResult {
-  decision: "certified" | "rejected" | "review";
-  confidence: string;
-  proto_score: number | null;
-  message: string;
-}
+const API = "https://app.jobsbyhumans.com";
+const H = { Authorization: `Bearer ${process.env.HS_API_KEY}` };
 
-async function certifyTrack(audioUrl: string): Promise<CertificationResult> {
-  const result = await fetch("https://app.jobsbyhumans.com/api/analyze", {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${process.env.HS_API_KEY}`,
-      "Content-Type": "application/json",
-    },
+async function analyzeFull(audioUrl: string): Promise<any> {
+  const job = await fetch(`${API}/api/analyze`, {
+    method: "POST", headers: { ...H, "Content-Type": "application/json" },
     body: JSON.stringify({ url: audioUrl }),
   }).then(r => r.json());
+  while (true) {
+    const s = await fetch(`${API}/api/jobs/${job.job_id}/status?detail=full`, { headers: H }).then(r => r.json());
+    if (s.status === "complete") return s.result;
+    await new Promise(r => setTimeout(r, 2000));
+  }
+}
 
+async function certifyTrack(audioUrl: string) {
+  const result = await analyzeFull(audioUrl);
   const pressSafe = result.tier_verdicts?.press_safe;
-  const protoScore = result.scores?.prototype_score;
 
   if (pressSafe === "human") {
-    return {
-      decision: "certified",
-      confidence: "press-safe",
-      proto_score: protoScore,
-      message: "Acoustic evidence consistent with human origin at press-safe confidence.",
-    };
-  } else if (pressSafe === "suspicious") {
-    return {
-      decision: "rejected",
-      confidence: "press-safe",
-      proto_score: protoScore,
-      message: "Acoustic evidence of AI-generated origin detected.",
-    };
-  } else {
-    return {
-      decision: "review",
-      confidence: "inconclusive",
-      proto_score: protoScore,
-      message: "Insufficient evidence at press-safe threshold. Expert review required.",
-    };
+    return { decision: "certified", confidence_tier: "press_safe", confidence: result.confidence, model_version: result.model_version, processed_at: result.processed_at };
   }
+  if (pressSafe === "ai") {
+    return { decision: "rejected", confidence_tier: "press_safe", confidence: result.confidence, origin: result.origin, model_version: result.model_version };
+  }
+  return { decision: "review", confidence_tier: "inconclusive", human_safe_verdict: result.tier_verdicts?.human_safe, model_version: result.model_version };
 }
 ```
 
 ## What to include in a certification report
 
-When issuing a human-origin certificate, include:
-
 | Field | Value |
 |-------|-------|
-| `confidence_tier` | `"press-safe"` |
-| `prototype_score` | e.g. `0.21` |
-| `calibration_version` | e.g. `"clairity-bench-2026-01-12"` |
-| `processed_at` | ISO timestamp |
-| `origin` | `"human"` (or `null`) |
+| `confidence_tier` | `"press_safe"` |
+| `confidence` | e.g. `0.94` |
+| `model_version` | e.g. `"2026-04-29"` — the calibration version that produced this result |
+| `processed_at` | ISO 8601 timestamp |
+| `origin` | `null` for human verdicts; the detected generator for AI |
 
-This creates an auditable chain: which version of the model made the call, at what threshold, and with what score.
+This creates an auditable chain: which model version made the call, at what confidence, and when.
 
-## Handling `null` press-safe (expert review)
+## Handling `"uncertain"` press-safe (expert review)
 
-When press-safe is `null`, there is not enough acoustic evidence to make a press-safe determination. Recommended actions:
+When `press_safe` is `"uncertain"`, there isn't enough acoustic evidence for a press-safe determination. Recommended:
 
-1. Check `human_safe` — if that's also `"human"`, the track falls below the press-safe threshold but shows no AI evidence at human-safe confidence
-2. Review `risk_series` to see which sections of the track scored elevated
-3. Route to a human expert with the full signal report
-4. Optionally: request the artist provide session files or DAW project for verification
+1. Check `tier_verdicts.human_safe` — if it's `"human"`, the track falls below press-safe but shows no AI evidence at the human-safe threshold.
+2. Review `risk_segments` (from `?detail=full`) to see which sections scored elevated.
+3. Route to a human expert with the full signal report (`scores`, `risk_segments`).
+4. Optionally request the artist provide session files or a DAW project for verification.
 
 <Warning>
-  Do not certify tracks where `press_safe` is `null`. Issue certification only on explicit `"human"` verdicts at this tier.
+  Do not certify tracks where `press_safe` is `"uncertain"`. Issue certification only on explicit `"human"` verdicts at this tier.
 </Warning>

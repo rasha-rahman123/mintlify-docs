@@ -3,88 +3,76 @@ title: Confidence Tiers
 description: Three operating thresholds — choose the right tradeoff for your use case.
 ---
 
-Every result includes three simultaneous verdicts, each calibrated to a different false positive rate. Build policies that route automatically at high confidence and escalate to human review at lower confidence.
-
-Every result includes a `tier_verdicts` object:
+Every `?detail=full` response includes three simultaneous verdicts, each calibrated to a different false-positive rate. Use them to route automatically at high confidence and escalate borderline cases to human review.
 
 ```json
 "tier_verdicts": {
-  "press_safe": null,
-  "human_safe": "suspicious",
-  "recall": "suspicious"
+  "press_safe": "uncertain",
+  "human_safe": "ai",
+  "recall": "ai"
 }
 ```
+
+Each tier value uses the same taxonomy as top-level `verdict`: `"ai"`, `"human"`, or `"uncertain"`.
 
 ## The three tiers
 
 <CardGroup cols={3}>
   <Card title="Press-Safe" icon="shield-check">
-    **~0% false positive rate**
+    **~0% false-positive rate**
 
-    Near-zero FPR on human recordings. Fires on `prototype_score >= 0.807`.
+    Near-zero FPR on human recordings.
 
     Certification, public attestation, licensing submissions.
   </Card>
   <Card title="Human-Safe" icon="user-check">
-    **~1–2% false positive rate**
+    **~1–2% false-positive rate**
 
     Low FPR on human recordings.
 
-    Supply chain gating, catalog intake, auto-reject workflows.
+    Supply-chain gating, catalog intake, auto-reject workflows.
   </Card>
   <Card title="Recall" icon="magnifying-glass">
-    **~5–10% false positive rate**
+    **~5–10% false-positive rate**
 
     Wider net, higher recall.
 
-    Manual review queues, audit sampling, secondary screening.
+    Manual-review queues, audit sampling, secondary screening.
   </Card>
 </CardGroup>
 
 ## How to read `tier_verdicts`
 
-Each tier value is one of:
-
 | Value | Meaning |
 |-------|---------|
-| `"suspicious"` | Evidence meets this tier's threshold — call it AI at this confidence level |
+| `"ai"` | Evidence meets this tier's threshold — call it AI at this confidence level |
 | `"human"` | Evidence falls below this tier's threshold — passes at this confidence level |
-| `null` | Tier not evaluated (press-safe requires the press-safe model enabled; see below) |
+| `"uncertain"` | Borderline — neither side has crossed the threshold |
 
-Tiers are independent. A track can be `"suspicious"` at recall but `"human"` at human-safe — that means it's borderline and should go to manual review.
+Tiers are independent. A track can be `"ai"` at recall but `"human"` at human-safe — that means it's borderline and should go to manual review.
 
 ## Typical patterns
 
 ```json
 // Confident AI detection — flagged at all tiers
-{ "press_safe": "suspicious", "human_safe": "suspicious", "recall": "suspicious" }
+{ "press_safe": "ai", "human_safe": "ai", "recall": "ai" }
 
 // Borderline — only caught at recall (escalate to manual review)
-{ "press_safe": null, "human_safe": "human", "recall": "suspicious" }
+{ "press_safe": "uncertain", "human_safe": "human", "recall": "ai" }
 
 // Clear human — passes all tiers
 { "press_safe": "human", "human_safe": "human", "recall": "human" }
 
 // AI confirmed at human-safe but not press-safe (inconclusive for certification)
-{ "press_safe": null, "human_safe": "suspicious", "recall": "suspicious" }
+{ "press_safe": "uncertain", "human_safe": "ai", "recall": "ai" }
 ```
-
-## Press-safe and `prototype_score`
-
-Press-safe uses a proprietary acoustic analysis that remains stable across compression, mastering, and loudness variation. The underlying score is `prototype_score`. Press-safe fires when `prototype_score >= 0.807`.
-
-`press_safe` shows `null` if:
-- Press-safe scoring is not enabled for your organization
-- The track is too short to score reliably
-
-Contact support to enable press-safe scoring for your account.
 
 ## Choosing a tier for your use case
 
 | Use case | Recommended tier | Why |
 |----------|-----------------|-----|
 | Certification / public attestation | `press_safe` | Near-zero FPR protects reputation |
-| Supply chain first/default gate (press chain) | `press_safe` | First layer for highest-confidence blocking |
+| Supply-chain first/default gate (press chain) | `press_safe` | First layer for highest-confidence blocking |
 | Distribution-layer auto-reject | `human_safe` | Blocks AI confidently with low collateral damage to human artists |
 | Escalation to manual review | `recall` | Cast a wider net, let humans decide borderline cases |
 | Internal audit / research | All three | Full picture for analysis |

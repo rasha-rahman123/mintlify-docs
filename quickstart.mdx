@@ -1,90 +1,242 @@
 ---
-title: Quickstart
-description: Analyze your first track in minutes.
+title: Getting Started
+description: From API key to your first verdict in under 5 minutes.
 ---
 
-## 1. Get your API key
+You'll do three things: **get a key, submit a track, read the verdict.** All four code samples below show the same flow — pick your language.
 
-Log in to the [HumanStandard dashboard](https://secure.hsverify.com) and go to **Settings → API Keys**. Create a key and copy it — it's shown once.
+## 1. Get an API key
+
+Log in to the [HumanStandard dashboard](https://secure.hsverify.com), go to **Settings → API Keys**, and create one. Copy it — it's shown once.
+
+```bash
+export HS_API_KEY=hs_your_key_here
+```
 
 <Warning>
-  Keep your API key secret. Use environment variables, not hardcoded values.
+  Treat the key like a password. Use environment variables, never hardcode it.
 </Warning>
 
-## 2. Analyze a track
+## 2. Submit and poll
 
-POST a publicly accessible audio URL:
+`POST /api/analyze` returns a `job_id` immediately. Poll `/api/jobs/{job_id}/status` until `status` is `complete`. Cold starts take ~20–30s; subsequent calls are faster.
 
 <CodeGroup>
 ```bash cURL
-curl -X POST https://app.jobsbyhumans.com/api/analyze \
-  -H "Authorization: Bearer YOUR_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"url": "https://your-cdn.com/track.mp3"}'
+BASE_URL="https://app.jobsbyhumans.com"
+AUTH="Authorization: Bearer $HS_API_KEY"
+
+# Submit the track. Returns { "job_id": "...", "status": "queued" }.
+job_id=$(curl -s -X POST "$BASE_URL/api/analyze" \
+  -H "$AUTH" \
+  -F "file=@track.mp3" | jq -r .job_id)
+
+# Poll until complete.
+while :; do
+  response=$(curl -s "$BASE_URL/api/jobs/$job_id/status" -H "$AUTH")
+  case "$(echo "$response" | jq -r .status)" in
+    complete) echo "$response" | jq .result; break ;;
+    failed)   echo "$response" >&2; exit 1 ;;
+    *)        sleep 2 ;;
+  esac
+done
 ```
 
 ```python Python
-import requests, os
+import os
+import time
+import requests
 
-result = requests.post(
-    "https://app.jobsbyhumans.com/api/analyze",
-    headers={"Authorization": f"Bearer {os.environ['HS_API_KEY']}"},
-    json={"url": "https://your-cdn.com/track.mp3"}
-).json()
+BASE_URL = "https://app.jobsbyhumans.com"
+HEADERS = {"Authorization": f"Bearer {os.environ['HS_API_KEY']}"}
 
-print(result["verdict"])                # "human" | "suspicious"
-print(result["tier_verdicts"])          # per-tier breakdown
+
+def submit_track(path: str) -> str:
+    """Upload a file. Returns the job_id to poll."""
+    with open(path, "rb") as audio:
+        response = requests.post(
+            f"{BASE_URL}/api/analyze",
+            headers=HEADERS,
+            files={"file": audio},
+        )
+    response.raise_for_status()
+    return response.json()["job_id"]
+
+
+def wait_for_result(job_id: str, timeout_seconds: int = 300) -> dict:
+    """Poll until the job completes. Returns the result dict."""
+    deadline = time.monotonic() + timeout_seconds
+    while time.monotonic() < deadline:
+        status = requests.get(
+            f"{BASE_URL}/api/jobs/{job_id}/status",
+            headers=HEADERS,
+        ).json()
+        if status["status"] == "complete":
+            return status["result"]
+        if status["status"] == "failed":
+            raise RuntimeError(status.get("error") or "analysis failed")
+        time.sleep(2)
+    raise TimeoutError(f"job {job_id} did not complete in {timeout_seconds}s")
+
+
+job_id = submit_track("track.mp3")
+result = wait_for_result(job_id)
+print(result["verdict"], result["confidence"])
 ```
 
 ```typescript TypeScript
-const result = await fetch("https://app.jobsbyhumans.com/api/analyze", {
-  method: "POST",
-  headers: {
-    "Authorization": `Bearer ${process.env.HS_API_KEY}`,
-    "Content-Type": "application/json",
-  },
-  body: JSON.stringify({ url: "https://your-cdn.com/track.mp3" }),
-}).then(r => r.json());
+import { readFile } from "node:fs/promises";
 
-console.log(result.verdict);
-console.log(result.tier_verdicts);
+const BASE_URL = "https://app.jobsbyhumans.com";
+const headers = { Authorization: `Bearer ${process.env.HS_API_KEY}` };
+
+async function submitTrack(path: string): Promise<string> {
+  const audio = await readFile(path);
+  const form = new FormData();
+  form.append("file", new Blob([audio]), path);
+
+  const response = await fetch(`${BASE_URL}/api/analyze`, {
+    method: "POST",
+    headers,
+    body: form,
+  });
+  if (!response.ok) throw new Error(`submit failed: ${response.status}`);
+  const { job_id } = await response.json();
+  return job_id;
+}
+
+async function waitForResult(jobId: string, timeoutMs = 300_000): Promise<any> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const status = await fetch(`${BASE_URL}/api/jobs/${jobId}/status`, { headers })
+      .then(r => r.json());
+    if (status.status === "complete") return status.result;
+    if (status.status === "failed") throw new Error(status.error ?? "analysis failed");
+    await new Promise(r => setTimeout(r, 2000));
+  }
+  throw new Error(`job ${jobId} did not complete in time`);
+}
+
+const jobId = await submitTrack("track.mp3");
+const result = await waitForResult(jobId);
+console.log(result.verdict, result.confidence);
+```
+
+```ruby Ruby
+require "faraday"
+require "faraday/multipart"
+
+BASE_URL = "https://app.jobsbyhumans.com"
+
+client = Faraday.new(url: BASE_URL) do |f|
+  f.request :multipart
+  f.request :json
+  f.response :json
+  f.headers["Authorization"] = "Bearer #{ENV.fetch('HS_API_KEY')}"
+end
+
+def submit_track(client, path)
+  payload = { file: Faraday::Multipart::FilePart.new(path, "audio/mpeg") }
+  response = client.post("/api/analyze", payload)
+  raise "submit failed: #{response.status}" unless response.success?
+  response.body.fetch("job_id")
+end
+
+def wait_for_result(client, job_id, timeout_seconds: 300)
+  deadline = Time.now + timeout_seconds
+  while Time.now < deadline
+    status = client.get("/api/jobs/#{job_id}/status").body
+    return status.fetch("result") if status["status"] == "complete"
+    raise status["error"] || "analysis failed" if status["status"] == "failed"
+    sleep 2
+  end
+  raise "job #{job_id} did not complete in #{timeout_seconds}s"
+end
+
+job_id = submit_track(client, "track.mp3")
+result = wait_for_result(client, job_id)
+puts "#{result['verdict']} (#{result['confidence']})"
 ```
 </CodeGroup>
 
-## 3. Act on the result
+## 3. The response
 
-Route based on `tier_verdicts`:
-
-```python
-tier = result.get("tier_verdicts") or {}
-
-if tier.get("press_safe") == "suspicious":
-    # Reject - first/default press-chain gate
-elif tier.get("human_safe") == "suspicious":
-    # Reject - distribution-layer gate
-elif tier.get("recall") == "suspicious":
-    # Send to manual review - borderline
-else:
-    # Approve
+```json
+{
+  "verdict": "ai",
+  "confidence": 0.91,
+  "origin": "suno",
+  "origin_confidence": 0.82,
+  "risk_timeline": [0.12, 0.14, 0.88, 0.91, 0.89, 0.87],
+  "duration_sec": 187.4,
+  "model_version": "2026-04-29",
+  "processed_at": "2026-04-29T10:43:01Z"
+}
 ```
 
-<Tip>
-  Use `tier_verdicts` for routing, not the top-level `verdict`. Each tier is calibrated to a specific false positive rate. See [Confidence Tiers](/guides/confidence-tiers).
-</Tip>
+| Field | Type | Meaning |
+|-------|------|---------|
+| `verdict` | `"ai"` \| `"human"` \| `"uncertain"` | The classification |
+| `confidence` | float (0–1) | Confidence in the verdict |
+| `origin` | string \| null | Detected generator when AI (`suno`, `udio`, `elevenlabs`, etc.) |
+| `origin_confidence` | float \| null | Confidence in the origin attribution |
+| `risk_timeline` | float[] | Per-window AI probability (~2.5s windows) |
+| `duration_sec` | float | Audio duration |
+| `model_version` | string | Detector calibration version |
+| `processed_at` | string | ISO 8601 UTC timestamp |
 
-## Next steps
+That's the whole API. Three fields are usually all you need: `verdict`, `confidence`, `origin`.
+
+## 4. Act on the result
+
+```python
+if result["verdict"] == "ai":
+    reject(track)
+elif result["verdict"] == "uncertain":
+    send_to_manual_review(track)
+else:
+    approve(track)
+```
+
+For threshold gating:
+
+```python
+if result["verdict"] == "ai" and result["confidence"] >= 0.85:
+    reject(track)
+```
+
+## Need more detail?
+
+Pass `?detail=full` to extend the response with `scores`, `risk_segments`, and `tier_verdicts` (three operating points: strict / default / lenient). Same field naming, same taxonomy — `detail=full` only **adds** to the response.
+
+```bash
+curl "https://app.jobsbyhumans.com/api/jobs/$JOB/status?detail=full" \
+  -H "Authorization: Bearer $HS_API_KEY"
+```
+
+See [Response Shapes](/guides/simplified-responses) for the full picture.
+
+## Common patterns
 
 <CardGroup cols={2}>
-  <Card title="Confidence Tiers" icon="layer-group" href="/guides/confidence-tiers">
-    Choose the right threshold for your use case.
+  <Card title="Submitting many tracks" icon="database" href="/guides/bulk-jobs">
+    Use `/bulk/jobs` to submit thousands of tracks in one request.
   </Card>
-  <Card title="Supply Chain Filtering" icon="filter" href="/guides/use-case-supply-chain">
-    Full intake routing flow with error handling.
+  <Card title="Confidence tiers" icon="layer-group" href="/guides/confidence-tiers">
+    Three operating points (press-safe / human-safe / recall) for different risk profiles.
   </Card>
-  <Card title="Human Certification" icon="certificate" href="/guides/use-case-certification">
-    Issue human-origin attestations for licensing.
+  <Card title="Webhooks" icon="bolt" href="/guides/webhooks">
+    Skip polling — get notified when a job completes.
   </Card>
-  <Card title="Bulk Jobs" icon="database" href="/guides/bulk-jobs">
-    Scan thousands of tracks as a single job.
+  <Card title="Full API reference" icon="book" href="/api-reference/tracks/analyze">
+    Every endpoint, parameter, and response field.
   </Card>
 </CardGroup>
+
+## Troubleshooting
+
+**`429 Daily limit reached`** — you're using a Firebase token from the dashboard, not an API key. Make sure `Authorization: Bearer hs_...`. API keys aren't subject to the consumer demo cap.
+
+**`404 Job not found` while polling** — make sure you're polling `/api/jobs/{job_id}/status`, not `/bulk/jobs/{job_id}`. They're different services with separate ID spaces.
+
+**Long cold start (~30s)** — first request after idle has to warm a GPU. Set your poll timeout to at least 60s and your read timeout to 30s.

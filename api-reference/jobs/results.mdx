@@ -1,15 +1,21 @@
 ---
 title: Get Job Results
-description: Retrieve per-track results for a completed job.
+description: Retrieve per-track results for a completed bulk job.
 ---
 
 ## Endpoint
 
 ```http
-GET /jobs/{job_id}/results
+GET /bulk/jobs/{job_id}/results
 ```
 
-Results are returned as **newline-delimited JSON (NDJSON)** — one record per line. This format is efficient for streaming large result sets.
+Results stream as **newline-delimited JSON (NDJSON)** — one record per line. Each record is the same shape as the [single-track response](/api-reference/tracks/analyze), with an extra `item_id` field.
+
+## Query parameters
+
+| Param | Values | Description |
+|-------|--------|-------------|
+| `detail` | `full` | Adds `scores`, `risk_segments`, and `tier_verdicts` to each record |
 
 ## Example request
 
@@ -20,7 +26,7 @@ curl https://app.jobsbyhumans.com/bulk/jobs/job_abc123/results \
 ```
 
 ```python Python
-import requests, os
+import json, os, requests
 
 response = requests.get(
     "https://app.jobsbyhumans.com/bulk/jobs/job_abc123/results",
@@ -31,7 +37,7 @@ response = requests.get(
 for line in response.iter_lines():
     if line:
         record = json.loads(line)
-        print(record["item_id"], record["verdict"])
+        print(record["item_id"], record["verdict"], record["confidence"])
 ```
 
 ```typescript TypeScript
@@ -41,44 +47,43 @@ const response = await fetch(
 );
 
 const text = await response.text();
-const records = text.trim().split("\n").map(line => JSON.parse(line));
-
-for (const record of records) {
-  console.log(record.item_id, record.verdict);
+for (const line of text.trim().split("\n")) {
+  const record = JSON.parse(line);
+  console.log(record.item_id, record.verdict, record.confidence);
 }
 ```
 </CodeGroup>
 
 ## Response (NDJSON)
 
+Each line is one record:
+
+```json
+{"item_id":"track-001","verdict":"human","confidence":0.62,"origin":"human","origin_confidence":null,"risk_timeline":[0.04,0.07,0.05],"duration_sec":214.0,"model_version":"2026-04-29","processed_at":"2026-04-29T10:43:01Z"}
+{"item_id":"track-002","verdict":"ai","confidence":0.91,"origin":"suno","origin_confidence":0.82,"risk_timeline":[0.88,0.93,0.91],"duration_sec":187.4,"model_version":"2026-04-29","processed_at":"2026-04-29T10:43:04Z"}
 ```
-{"item_id":"track-001","status":"success","verdict":"human","tier_verdicts":{"press_safe":"human","human_safe":"human","recall":"human"},"scores":{"confidence_score":0.12,"geometry_score":0.18,"reliability":0.91},...}
-{"item_id":"track-002","status":"success","verdict":"suspicious","tier_verdicts":{"press_safe":null,"human_safe":"suspicious","recall":"suspicious"},"scores":{"confidence_score":0.79,"geometry_score":0.71,"reliability":0.88},...}
-{"item_id":"track-003","status":"failed","verdict":null,"error":"audio_load_failed"}
-```
 
-Each record matches the full result schema. See [Reading Results](/guides/reading-results) for field descriptions.
+| Field | Type | Description |
+|-------|------|-------------|
+| `item_id` | string | Identifier you supplied when submitting the job |
+| `verdict` | `"ai"` \| `"human"` \| `"uncertain"` | Final classification |
+| `confidence` | float (0–1) | Confidence in the verdict |
+| `origin` | string \| null | Detected generator when AI |
+| `origin_confidence` | float (0–1) \| null | Confidence in origin attribution |
+| `risk_timeline` | float[] | Per-window AI probability |
+| `duration_sec` | float | Audio duration in seconds |
+| `model_version` | string | Detector calibration version |
+| `processed_at` | string (ISO 8601 UTC) | When analysis completed |
 
-## Simplified response
+Failed items return `{"item_id": "...", "status": "failed", "error": "..."}`.
 
-Add `detail=simple` to get a reduced ~10-field response per track instead of the full 40+ field record. See [Simplified Responses](/guides/simplified-responses) for the v2 schema and field reference.
+## Detail = full
+
+Add `?detail=full` to extend each record with `scores`, `risk_segments`, and `tier_verdicts`:
 
 ```bash
-curl "https://app.jobsbyhumans.com/bulk/jobs/job_abc123/results?detail=simple" \
+curl "https://app.jobsbyhumans.com/bulk/jobs/job_abc123/results?detail=full" \
   -H "Authorization: Bearer YOUR_API_KEY"
 ```
 
-## Filtering
-
-| Query param | Values | Description |
-|------------|--------|-------------|
-| `verdict` | `human`, `suspicious` | Filter by verdict |
-| `status` | `success`, `failed` | Filter by processing status |
-| `page` | integer | Page number (default: 1) |
-| `per_page` | integer | Results per page (default: 500, max: 1000) |
-
-```bash
-# Only return suspicious tracks
-curl "https://app.jobsbyhumans.com/bulk/jobs/job_abc123/results?verdict=suspicious" \
-  -H "Authorization: Bearer YOUR_API_KEY"
-```
+The added blocks are identical to the [single-track `detail=full` response](/api-reference/tracks/analyze#detail-full).

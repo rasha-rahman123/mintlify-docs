@@ -1,15 +1,19 @@
 ---
 title: Analyze Track
-description: Analyze a single audio track synchronously.
+description: Analyze a single audio track.
 ---
 
 ## Endpoint
 
 ```http
-POST /analyze
+POST /api/analyze
 ```
 
+Returns a `job_id` immediately. Poll `/api/jobs/{job_id}/status` until `status` is `complete`. Cold starts can take 20–30s.
+
 ## Request body
+
+Multipart upload (`file`) or JSON with a URL.
 
 ```json
 {
@@ -19,18 +23,18 @@ POST /analyze
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
+| `file` | file | Yes* | Multipart audio upload |
 | `url` | string | Yes* | Publicly accessible audio URL |
-| `file_id` | string | Yes* | File identifier for signed URL resolution |
 
-*Provide either `url` or `file_id`, not both.
+*Provide either a `file` upload or a `url` in the JSON body.
 
 ## Query parameters
 
 | Param | Values | Description |
 |-------|--------|-------------|
-| `detail` | `full`, `simple` | Response detail level. Default: `full` |
+| `detail` | `full` | Adds `scores`, `risk_segments`, and `tier_verdicts` to the response |
 
-Pass `detail=simple` for a reduced ~10-field response. See [Simplified Responses](/guides/simplified-responses).
+The default response is the tight 8-field shape below. Pass `?detail=full` to add advanced signals.
 
 ## Example request
 
@@ -38,28 +42,39 @@ Pass `detail=simple` for a reduced ~10-field response. See [Simplified Responses
 ```bash cURL
 curl -X POST https://app.jobsbyhumans.com/api/analyze \
   -H "Authorization: Bearer YOUR_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"url": "https://cdn.example.com/track.mp3"}'
+  -F "file=@track.mp3"
 ```
 
 ```python Python
 import requests, os
 
-result = requests.post(
+job = requests.post(
     "https://app.jobsbyhumans.com/api/analyze",
     headers={"Authorization": f"Bearer {os.environ['HS_API_KEY']}"},
-    json={"url": "https://cdn.example.com/track.mp3"}
+    files={"file": open("track.mp3", "rb")},
 ).json()
+
+# Poll until complete
+import time
+while True:
+    status = requests.get(
+        f"https://app.jobsbyhumans.com/api/jobs/{job['job_id']}/status",
+        headers={"Authorization": f"Bearer {os.environ['HS_API_KEY']}"},
+    ).json()
+    if status["status"] == "complete":
+        result = status["result"]
+        break
+    time.sleep(2)
 ```
 
 ```typescript TypeScript
-const result = await fetch("https://app.jobsbyhumans.com/api/analyze", {
+const form = new FormData();
+form.append("file", fileBlob, "track.mp3");
+
+const job = await fetch("https://app.jobsbyhumans.com/api/analyze", {
   method: "POST",
-  headers: {
-    "Authorization": `Bearer ${process.env.HS_API_KEY}`,
-    "Content-Type": "application/json",
-  },
-  body: JSON.stringify({ url: "https://cdn.example.com/track.mp3" }),
+  headers: { "Authorization": `Bearer ${process.env.HS_API_KEY}` },
+  body: form,
 }).then(r => r.json());
 ```
 </CodeGroup>
@@ -68,40 +83,53 @@ const result = await fetch("https://app.jobsbyhumans.com/api/analyze", {
 
 ```json
 {
-  "status": "success",
-  "verdict": "suspicious",
-  "tier_verdicts": {
-    "press_safe": "suspicious",
-    "human_safe": "suspicious",
-    "recall": "suspicious"
-  },
-  "scores": {
-    "confidence_score": 0.91,
-    "geometry_score": 0.84,
-    "prototype_score": 0.82,
-    "fusion_score": 0.86,
-    "spectral_score": 0.94,
-    "frequency_artifact_score": 0.88,
-    "temporal_consistency_score": 0.81,
-    "perceptual_score": 0.73,
-    "phase_coherence_score": null,
-    "hf_energy_score": 0.34,
-    "codec_artifact_score": 0.11,
-    "representation_score": 0.79,
-    "temporal_stability": 0.03,
-    "reliability": 0.91
-  },
-  "audio": {
-    "duration_sec": 187.4,
-    "sample_rate": 44100,
-    "channels": 2,
-    "codec": "mp3"
-  },
+  "verdict": "ai",
+  "confidence": 0.91,
   "origin": "suno",
-  "origin_confidence": 0.87,
-  "risk_series": [0.89, 0.92, 0.91, 0.88, 0.94, 0.90],
-  "processed_at": "2026-02-27T10:43:01Z"
+  "origin_confidence": 0.82,
+  "risk_timeline": [0.12, 0.14, 0.88, 0.91, 0.89, 0.87],
+  "duration_sec": 187.4,
+  "model_version": "2026-04-29",
+  "processed_at": "2026-04-29T10:43:01Z"
 }
 ```
 
-See [Reading Results](/guides/reading-results) for field descriptions and [Signal Reference](/guides/signal-reference) for score details.
+| Field | Type | Description |
+|-------|------|-------------|
+| `verdict` | `"ai"` \| `"human"` \| `"uncertain"` | Final classification |
+| `confidence` | float (0–1) | Confidence in the verdict |
+| `origin` | string \| null | Detected generator (e.g. `suno`, `udio`) when AI |
+| `origin_confidence` | float (0–1) \| null | Confidence in the origin attribution |
+| `risk_timeline` | float[] | Per-window AI probability (~2.5s windows) |
+| `duration_sec` | float | Audio duration in seconds |
+| `model_version` | string | Detector calibration version |
+| `processed_at` | string (ISO 8601 UTC) | When analysis completed |
+
+## Detail = full
+
+Adding `?detail=full` extends the response with three blocks:
+
+```json
+{
+  "scores": {
+    "spectral": 0.91,
+    "temporal": 0.77,
+    "representation": 0.68,
+    "geometry": 0.79,
+    "reliability": 0.88
+  },
+  "risk_segments": [
+    { "start": 0.0, "end": 2.5, "risk": 0.12 },
+    { "start": 2.5, "end": 5.0, "risk": 0.88 }
+  ],
+  "tier_verdicts": {
+    "press_safe": "uncertain",
+    "human_safe": "ai",
+    "recall": "ai"
+  }
+}
+```
+
+`tier_verdicts` use the same `ai` / `human` / `uncertain` taxonomy as the top-level `verdict`.
+
+See [Reading Results](/guides/reading-results) for guidance on interpreting these fields.
