@@ -18,7 +18,7 @@
           {
             "name": "detail",
             "in": "query",
-            "description": "Pass `full` to extend the polled result with scores, risk_segments, and tier_verdicts.",
+            "description": "Pass `full` to extend the polled result with risk_segments and tier_verdicts.",
             "required": false,
             "schema": { "type": "string", "enum": ["full"] }
           }
@@ -180,17 +180,6 @@
           "duration_sec": { "type": "number", "format": "float" },
           "model_version": { "type": "string" },
           "processed_at": { "type": "string", "format": "date-time" },
-          "scores": {
-            "type": "object",
-            "description": "Present only when ?detail=full",
-            "properties": {
-              "spectral": { "type": "number", "nullable": true },
-              "temporal": { "type": "number", "nullable": true },
-              "representation": { "type": "number", "nullable": true },
-              "geometry": { "type": "number", "nullable": true },
-              "reliability": { "type": "number", "nullable": true }
-            }
-          },
           "risk_segments": {
             "type": "array",
             "description": "Present only when ?detail=full",

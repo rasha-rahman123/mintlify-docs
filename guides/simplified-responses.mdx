@@ -35,19 +35,12 @@ Returned by:
 | `model_version` | string | Detector calibration version |
 | `processed_at` | string (ISO 8601 UTC) | When analysis completed |
 
-## `?detail=full` (adds 3 blocks)
+## `?detail=full` (adds 2 blocks)
 
-Pass `?detail=full` to extend the response with `scores`, `risk_segments`, and `tier_verdicts`:
+Pass `?detail=full` to extend the response with `risk_segments` and `tier_verdicts`:
 
 ```json
 {
-  "scores": {
-    "spectral": 0.91,
-    "temporal": 0.77,
-    "representation": 0.68,
-    "geometry": 0.79,
-    "reliability": 0.88
-  },
   "risk_segments": [
     { "start": 0.0, "end": 2.5, "risk": 0.12 },
     { "start": 2.5, "end": 5.0, "risk": 0.88 }
@@ -60,7 +53,7 @@ Pass `?detail=full` to extend the response with `scores`, `risk_segments`, and `
 }
 ```
 
-The 8 default fields are still present; `detail=full` only **adds** to the response, never renames or rescales.
+`risk_segments` gives timestamped per-window risk. `tier_verdicts` gives three operating points (strict / default / lenient). The 8 default fields are still present; `detail=full` only **adds** to the response, never renames or rescales.
 
 ## Consistency guarantees
 
@@ -89,7 +82,7 @@ if record["verdict"] == "ai" and record["confidence"] >= 0.85:
     return "reject"
 ```
 
-For three operating points (strict, default, lenient) in one request, read `tier_verdicts` from `?detail=full`. See [Confidence Tiers](/guides/confidence-tiers).
+For three operating points (strict, default, lenient) in one request, read `tier_verdicts` from `?detail=full`. For per-segment temporal risk, read `risk_segments` from the same response. See [Confidence Tiers](/guides/confidence-tiers).
 
 ## Failures
 

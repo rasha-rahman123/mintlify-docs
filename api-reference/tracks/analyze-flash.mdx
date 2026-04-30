@@ -57,16 +57,10 @@ const result = await fetch("https://app.jobsbyhumans.com/api/analyze/flash", {
 
 ```json
 {
-  "status": "complete",
+  "verdict": "ai",
+  "confidence": 0.96,
   "engine": "flash-v1",
   "filename": "track.mp3",
-  "summary": {
-    "verdict": "ai",
-    "ai_probability": 0.961,
-    "action_band": "block",
-    "reliability_score": 0.87,
-    "note": "Flash analysis — instant on-device result. Use standard analysis for full multi-head detail."
-  },
   "credits_used": 0.5,
   "credits_charged": 1
 }
@@ -76,24 +70,18 @@ const result = await fetch("https://app.jobsbyhumans.com/api/analyze/flash", {
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `summary.verdict` | string | `ai`, `suspicious`, or `human` |
-| `summary.ai_probability` | float | Raw model probability (0–1) |
-| `summary.action_band` | string | `block`, `review`, or `allow` |
-| `summary.reliability_score` | float | Fixed at `0.87` for flash engine |
+| `verdict` | `"ai"` \| `"human"` \| `"uncertain"` | Final classification |
+| `confidence` | float (0–1) | Confidence in the verdict |
+| `engine` | string | Always `flash-v1` |
+| `filename` | string | The uploaded filename |
 | `credits_used` | float | Always `0.5` |
 | `credits_charged` | integer | Actual credits deducted |
 
-## Verdict thresholds
+## Calibration
 
-| Verdict | Condition | Real-world FPR | AI TPR |
-|---------|-----------|----------------|--------|
-| `ai` | probability ≥ 0.930 | 1.7% | 77.7% |
-| `suspicious` | probability ≥ 0.800 | 6.0% | 93.2% |
-| `human` | probability < 0.800 | — | — |
+Calibrated against a 1,302-track real-world pop catalog (major-label releases across multiple labels and years) and a 672-track AI catalog covering Suno, Udio, Lyria, and four other generators.
 
-Calibrated against a 1,302-track real-world pop catalog (major-label releases spanning multiple labels and years) and a 672-track AI catalog covering Suno, Udio, Lyria, and four other generators.
-
-At the `ai` threshold, roughly 1–2 out of every 100 human songs will be flagged. Treat the `ai` verdict as evidence, not proof — for workflows that cannot tolerate false accusations, gate on the full [analyze endpoint](/api-reference/tracks/analyze) or require `press_safe` from the [confidence tiers](/guides/confidence-tiers).
+At the default decision threshold, the false-positive rate on human tracks is ~1–2%. Treat the `ai` verdict as evidence, not proof — for workflows that cannot tolerate false accusations, gate on the full [analyze endpoint](/api-reference/tracks/analyze) and require `press_safe` from the [confidence tiers](/guides/confidence-tiers).
 
 ## When to use flash
 
@@ -101,4 +89,4 @@ At the `ai` threshold, roughly 1–2 out of every 100 human songs will be flagge
 - **Pre-filter before full analysis** — screen a large batch cheaply, send only flagged tracks for full analysis
 - **Rate-limited environments** — flash uses no GPU quota
 
-Flash does not return segment-level risk series, origin attribution, or confidence tier breakdowns. For those, use [Analyze Track](/api-reference/tracks/analyze).
+Flash does not return `risk_timeline`, `origin`, or `tier_verdicts`. For those, use [Analyze Track](/api-reference/tracks/analyze).

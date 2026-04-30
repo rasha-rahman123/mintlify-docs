@@ -54,9 +54,13 @@ function route(record: Record<string, any>): string {
 
 For threshold-based routing (e.g. only reject when `confidence >= 0.85`), gate on `confidence` alongside `verdict`.
 
-## Tier verdicts (advanced)
+## More detail with `?detail=full`
 
-If you need different operating points — e.g. a strict gate for press releases and a permissive gate for internal review — pass `?detail=full` and read `tier_verdicts`:
+Pass `?detail=full` to add two blocks: `risk_segments` (timestamped per-window risk) and `tier_verdicts` (three operating points).
+
+### Tier verdicts
+
+If you need different operating points — e.g. a strict gate for press releases and a permissive gate for internal review — read `tier_verdicts`:
 
 ```json
 {

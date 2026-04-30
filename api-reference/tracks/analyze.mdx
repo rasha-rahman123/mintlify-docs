@@ -32,9 +32,9 @@ Multipart upload (`file`) or JSON with a URL.
 
 | Param | Values | Description |
 |-------|--------|-------------|
-| `detail` | `full` | Adds `scores`, `risk_segments`, and `tier_verdicts` to the response |
+| `detail` | `full` | Adds `risk_segments` and `tier_verdicts` to the response |
 
-The default response is the tight 8-field shape below. Pass `?detail=full` to add advanced signals.
+The default response is the tight 8-field shape below. Pass `?detail=full` for per-segment risk and three-tier operating points.
 
 ## Example request
 
@@ -107,17 +107,10 @@ const job = await fetch("https://app.jobsbyhumans.com/api/analyze", {
 
 ## Detail = full
 
-Adding `?detail=full` extends the response with three blocks:
+Adding `?detail=full` extends the response with two blocks:
 
 ```json
 {
-  "scores": {
-    "spectral": 0.91,
-    "temporal": 0.77,
-    "representation": 0.68,
-    "geometry": 0.79,
-    "reliability": 0.88
-  },
   "risk_segments": [
     { "start": 0.0, "end": 2.5, "risk": 0.12 },
     { "start": 2.5, "end": 5.0, "risk": 0.88 }
@@ -130,6 +123,6 @@ Adding `?detail=full` extends the response with three blocks:
 }
 ```
 
-`tier_verdicts` use the same `ai` / `human` / `uncertain` taxonomy as the top-level `verdict`.
+`risk_segments` gives per-window AI probability with timestamps. `tier_verdicts` gives three operating points (strict / default / lenient), each using the same `ai` / `human` / `uncertain` taxonomy as the top-level `verdict`.
 
 See [Reading Results](/guides/reading-results) for guidance on interpreting these fields.

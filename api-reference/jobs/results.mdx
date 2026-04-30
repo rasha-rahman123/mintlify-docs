@@ -15,7 +15,7 @@ Results stream as **newline-delimited JSON (NDJSON)** — one record per line. E
 
 | Param | Values | Description |
 |-------|--------|-------------|
-| `detail` | `full` | Adds `scores`, `risk_segments`, and `tier_verdicts` to each record |
+| `detail` | `full` | Adds `risk_segments` and `tier_verdicts` to each record |
 
 ## Example request
 
@@ -79,7 +79,7 @@ Failed items return `{"item_id": "...", "status": "failed", "error": "..."}`.
 
 ## Detail = full
 
-Add `?detail=full` to extend each record with `scores`, `risk_segments`, and `tier_verdicts`:
+Add `?detail=full` to extend each record with `risk_segments` and `tier_verdicts`:
 
 ```bash
 curl "https://app.jobsbyhumans.com/bulk/jobs/job_abc123/results?detail=full" \

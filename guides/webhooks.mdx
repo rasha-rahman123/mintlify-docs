@@ -61,23 +61,23 @@ Or set a default webhook URL for all jobs in **Settings → Integrations → Def
   "job_id": "job_abc123",
   "item_id": "track-001",
   "status": "success",
-  "verdict": "suspicious",
+  "verdict": "ai",
+  "confidence": 0.87,
+  "origin": "suno",
+  "origin_confidence": 0.79,
+  "risk_timeline": [0.12, 0.88, 0.91, 0.87],
   "tier_verdicts": {
-    "press_safe": null,
-    "human_safe": "suspicious",
-    "recall": "suspicious"
+    "press_safe": "ai",
+    "human_safe": "ai",
+    "recall": "ai"
   },
-  "scores": {
-    "confidence_score": 0.87,
-    "geometry_score": 0.79,
-    "prototype_score": 0.74,
-    "spectral_score": 0.91,
-    "frequency_artifact_score": 0.83,
-    "reliability": 0.94
-  },
-  "processed_at": "2026-02-27T10:43:01Z"
+  "duration_sec": 187.4,
+  "model_version": "2026-04-29",
+  "processed_at": "2026-04-29T10:43:01Z"
 }
 ```
+
+The result fields match the [polling response](/api-reference/tracks/analyze) exactly. `tier_verdicts` is included by default in webhook payloads.
 
 ## Verifying signatures
 

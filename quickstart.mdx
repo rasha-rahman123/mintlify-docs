@@ -207,7 +207,7 @@ if result["verdict"] == "ai" and result["confidence"] >= 0.85:
 
 ## Need more detail?
 
-Pass `?detail=full` to extend the response with `scores`, `risk_segments`, and `tier_verdicts` (three operating points: strict / default / lenient). Same field naming, same taxonomy — `detail=full` only **adds** to the response.
+Pass `?detail=full` to extend the response with `risk_segments` (timestamped per-window risk) and `tier_verdicts` (three operating points: strict / default / lenient). Same field naming, same taxonomy — `detail=full` only **adds** to the response.
 
 ```bash
 curl "https://app.jobsbyhumans.com/api/jobs/$JOB/status?detail=full" \

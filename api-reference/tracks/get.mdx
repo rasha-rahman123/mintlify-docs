@@ -6,7 +6,7 @@ description: Retrieve a previously analyzed track by ID.
 ## Endpoint
 
 ```http
-GET /tracks/{track_id}
+GET /api/v1/tracks/{track_id}
 ```
 
 ## Example request
@@ -18,30 +18,20 @@ curl https://app.jobsbyhumans.com/api/v1/tracks/trk_xyz789 \
 
 ## Response
 
-Returns the same result schema as [Analyze Track](/api-reference/tracks/analyze).
+Returns the same shape as the polled `/api/jobs/{id}/status` result, plus an `id` field.
 
 ```json
 {
   "id": "trk_xyz789",
-  "status": "success",
   "verdict": "human",
-  "tier_verdicts": {
-    "press_safe": "human",
-    "human_safe": "human",
-    "recall": "human"
-  },
-  "scores": {
-    "confidence_score": 0.08,
-    "geometry_score": 0.12,
-    "prototype_score": 0.14,
-    "reliability": 0.94
-  },
-  "audio": {
-    "duration_sec": 214.3,
-    "sample_rate": 44100,
-    "channels": 2,
-    "codec": "mp3"
-  },
-  "processed_at": "2026-02-27T10:43:01Z"
+  "confidence": 0.62,
+  "origin": null,
+  "origin_confidence": null,
+  "risk_timeline": [0.04, 0.07, 0.05, 0.06],
+  "duration_sec": 214.3,
+  "model_version": "2026-04-29",
+  "processed_at": "2026-04-29T10:43:01Z"
 }
 ```
+
+Pass `?detail=full` to add `risk_segments` and `tier_verdicts`. See [Analyze Track](/api-reference/tracks/analyze) for the full field reference.
