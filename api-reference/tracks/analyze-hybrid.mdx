@@ -1,0 +1,113 @@
+---
+title: Analyze Track (Hybrid)
+description: Premium stem-aware analysis — separate the track and judge the vocal and instrumental independently.
+---
+
+## Endpoint
+
+```http
+POST /api/analyze/hybrid
+```
+
+<Note>
+**Premium tier — billed at 3× credits.** The hybrid pipeline separates the
+recording (BS-Roformer) and runs two detectors: a vocal-specific head on the
+isolated vocal and the main detector on the instrumental. It is heavier than
+[`/api/analyze`](/api-reference/tracks/analyze), which scores the full mix once.
+</Note>
+
+It returns **three independent verdicts**:
+
+- **`vocal`** — is the singing voice AI-generated or an AI voice clone?
+- **`instrumental`** — is the backing/production AI-generated?
+- **`track`** — the overall recording verdict, derived from the instrumental. An AI vocal clone sung over an *authentic* instrumental is an **authentic track with an AI vocal**, not an AI track.
+
+## Request body
+
+Send **either** a multipart upload or a JSON body with a URL (same as `/api/analyze`).
+
+**JSON (`Content-Type: application/json`):**
+
+```json
+{
+  "url": "https://your-cdn.com/track.mp3"
+}
+```
+
+**Multipart (`Content-Type: multipart/form-data`):**
+
+```
+file=@track.mp3
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `url` | string | Publicly accessible audio URL. Server downloads it before analysis. |
+| `file` | file | Multipart audio upload (mp3, wav, flac, m4a, etc.). |
+
+Provide exactly one of `file` or `url`. Sending both returns 422.
+
+## Example request
+
+<CodeGroup>
+```bash cURL (file)
+curl -X POST https://app.jobsbyhumans.com/api/analyze/hybrid \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -F "file=@track.mp3"
+```
+
+```bash cURL (URL)
+curl -X POST https://app.jobsbyhumans.com/api/analyze/hybrid \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://your-cdn.com/track.mp3"}'
+```
+
+```python Python
+import requests, os
+
+res = requests.post(
+    "https://app.jobsbyhumans.com/api/analyze/hybrid",
+    headers={"Authorization": f"Bearer {os.environ['HS_API_KEY']}"},
+    files={"file": open("track.mp3", "rb")},
+).json()
+
+print(res["result"]["vocal"], res["result"]["instrumental"])
+```
+</CodeGroup>
+
+## Response
+
+```json
+{
+  "status": "complete",
+  "billing": { "credits_charged": 3, "tier": "hybrid_3x" },
+  "result": {
+    "track":        { "verdict": "human", "ai_score": 0.08, "basis": "instrumental" },
+    "vocal":        { "verdict": "suspicious", "ai_score": 0.94, "fpr_tier": "0.01", "gated": false },
+    "instrumental": { "verdict": "human", "ai_score": 0.08 }
+  }
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `status` | string | `complete` when verdicts are returned synchronously. |
+| `billing.credits_charged` | int | Credits consumed (3× the per-minute rate). |
+| `billing.tier` | string | Always `hybrid_3x`. |
+| `result.vocal.verdict` | `"suspicious"` \| `"human"` \| `"no_vocal"` | Vocal-stem verdict. `no_vocal` when no vocal is present (or too quiet to score). |
+| `result.vocal.ai_score` | float (0–1) \| null | AI probability for the vocal. |
+| `result.vocal.fpr_tier` | string \| null | Strictest false-positive-rate band the score clears (`0.001`…`0.05`). |
+| `result.vocal.gated` | bool | `true` when the vocal was absent/too quiet to score. |
+| `result.instrumental.verdict` | `"ai"` \| `"human"` \| `"suspicious"` | Instrumental-stem verdict. |
+| `result.instrumental.ai_score` | float (0–1) \| null | AI probability for the instrumental. |
+| `result.track.verdict` | string | Overall track verdict (derived from the instrumental). |
+| `result.track.ai_score` | float (0–1) \| null | AI probability for the track. |
+| `result.track.basis` | string | What the track verdict is derived from (`instrumental`). |
+
+## When to use this
+
+Use the hybrid endpoint when you need to know **which part** is synthetic — the
+classic case being an AI vocal clone over a genuine instrumental (an "AI cover"),
+which the full-mix `/api/analyze` reports only at the track level. See
+[Reading Results](/guides/reading-results) for interpreting per-stem verdicts.

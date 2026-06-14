@@ -6,9 +6,15 @@
     "version": "1.0.0"
   },
   "servers": [
-    { "url": "https://app.jobsbyhumans.com" }
+    {
+      "url": "https://app.jobsbyhumans.com"
+    }
   ],
-  "security": [{ "bearerAuth": [] }],
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
   "paths": {
     "/api/analyze": {
       "post": {
@@ -20,7 +26,12 @@
             "in": "query",
             "description": "Pass `full` to extend the polled result with risk_segments and tier_verdicts.",
             "required": false,
-            "schema": { "type": "string", "enum": ["full"] }
+            "schema": {
+              "type": "string",
+              "enum": [
+                "full"
+              ]
+            }
           }
         ],
         "requestBody": {
@@ -30,18 +41,29 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["url"],
+                "required": [
+                  "url"
+                ],
                 "properties": {
-                  "url": { "type": "string", "description": "Publicly accessible audio URL. The server downloads it before analysis." }
+                  "url": {
+                    "type": "string",
+                    "description": "Publicly accessible audio URL. The server downloads it before analysis."
+                  }
                 }
               }
             },
             "multipart/form-data": {
               "schema": {
                 "type": "object",
-                "required": ["file"],
+                "required": [
+                  "file"
+                ],
                 "properties": {
-                  "file": { "type": "string", "format": "binary", "description": "Audio file upload (mp3, wav, flac, m4a, etc.)" }
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Audio file upload (mp3, wav, flac, m4a, etc.)"
+                  }
                 }
               }
             }
@@ -55,15 +77,24 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "job_id": { "type": "string" },
-                    "status": { "type": "string", "example": "queued" }
+                    "job_id": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "example": "queued"
+                    }
                   }
                 }
               }
             }
           },
-          "401": { "description": "Missing or invalid API key" },
-          "429": { "description": "Rate limit reached" }
+          "401": {
+            "description": "Missing or invalid API key"
+          },
+          "429": {
+            "description": "Rate limit reached"
+          }
         }
       }
     },
@@ -71,8 +102,25 @@
       "get": {
         "summary": "Poll a single-track job",
         "parameters": [
-          { "name": "job_id", "in": "path", "required": true, "schema": { "type": "string" } },
-          { "name": "detail", "in": "query", "required": false, "schema": { "type": "string", "enum": ["full"] } }
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "detail",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "full"
+              ]
+            }
+          }
         ],
         "responses": {
           "200": {
@@ -82,15 +130,29 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "job_id": { "type": "string" },
-                    "status": { "type": "string", "enum": ["queued", "processing", "complete", "failed"] },
-                    "result": { "$ref": "#/components/schemas/AnalysisResult" }
+                    "job_id": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "queued",
+                        "processing",
+                        "complete",
+                        "failed"
+                      ]
+                    },
+                    "result": {
+                      "$ref": "#/components/schemas/AnalysisResult"
+                    }
                   }
                 }
               }
             }
           },
-          "404": { "description": "Job not found" }
+          "404": {
+            "description": "Job not found"
+          }
         }
       }
     },
@@ -103,17 +165,28 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["items"],
+                "required": [
+                  "items"
+                ],
                 "properties": {
-                  "name": { "type": "string" },
+                  "name": {
+                    "type": "string"
+                  },
                   "items": {
                     "type": "array",
                     "items": {
                       "type": "object",
-                      "required": ["item_id", "url"],
+                      "required": [
+                        "item_id",
+                        "url"
+                      ],
                       "properties": {
-                        "item_id": { "type": "string" },
-                        "url": { "type": "string" }
+                        "item_id": {
+                          "type": "string"
+                        },
+                        "url": {
+                          "type": "string"
+                        }
                       }
                     }
                   }
@@ -130,10 +203,18 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "job_id": { "type": "string" },
-                    "status": { "type": "string" },
-                    "results_url": { "type": "string" },
-                    "summary_url": { "type": "string" }
+                    "job_id": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "results_url": {
+                      "type": "string"
+                    },
+                    "summary_url": {
+                      "type": "string"
+                    }
                   }
                 }
               }
@@ -146,17 +227,170 @@
       "get": {
         "summary": "Stream bulk job results (NDJSON)",
         "parameters": [
-          { "name": "job_id", "in": "path", "required": true, "schema": { "type": "string" } },
-          { "name": "detail", "in": "query", "required": false, "schema": { "type": "string", "enum": ["full"] } }
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "detail",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "full"
+              ]
+            }
+          }
         ],
         "responses": {
           "200": {
-            "description": "NDJSON stream — one AnalysisResult (with item_id) per line.",
+            "description": "NDJSON stream \u2014 one AnalysisResult (with item_id) per line.",
             "content": {
               "application/x-ndjson": {
-                "schema": { "$ref": "#/components/schemas/BulkResultRecord" }
+                "schema": {
+                  "$ref": "#/components/schemas/BulkResultRecord"
+                }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/analyze/hybrid": {
+      "post": {
+        "summary": "Analyze a track (hybrid, premium 3x)",
+        "description": "Premium stem-aware analysis. Separates the recording and returns independent vocal and instrumental AI verdicts plus a derived track verdict. Billed at 3x credits. Heavier than /api/analyze.",
+        "requestBody": {
+          "required": true,
+          "description": "Send exactly one of `file` (multipart) or `url` (JSON).",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "url"
+                ],
+                "properties": {
+                  "url": {
+                    "type": "string",
+                    "description": "Publicly accessible audio URL. The server downloads it before analysis."
+                  }
+                }
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "file"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Audio file upload (mp3, wav, flac, m4a, etc.)"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Hybrid verdicts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "billing": {
+                      "type": "object",
+                      "properties": {
+                        "credits_charged": {
+                          "type": "integer"
+                        },
+                        "tier": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "result": {
+                      "type": "object",
+                      "properties": {
+                        "track": {
+                          "type": "object",
+                          "properties": {
+                            "verdict": {
+                              "type": "string"
+                            },
+                            "ai_score": {
+                              "type": [
+                                "number",
+                                "null"
+                              ]
+                            },
+                            "basis": {
+                              "type": "string"
+                            }
+                          }
+                        },
+                        "vocal": {
+                          "type": "object",
+                          "properties": {
+                            "verdict": {
+                              "type": "string"
+                            },
+                            "ai_score": {
+                              "type": [
+                                "number",
+                                "null"
+                              ]
+                            },
+                            "fpr_tier": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "gated": {
+                              "type": "boolean"
+                            }
+                          }
+                        },
+                        "instrumental": {
+                          "type": "object",
+                          "properties": {
+                            "verdict": {
+                              "type": "string"
+                            },
+                            "ai_score": {
+                              "type": [
+                                "number",
+                                "null"
+                              ]
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Provide exactly one of file or url"
+          },
+          "429": {
+            "description": "Insufficient credits / rate limit"
           }
         }
       }
@@ -164,34 +398,88 @@
   },
   "components": {
     "securitySchemes": {
-      "bearerAuth": { "type": "http", "scheme": "bearer", "description": "API key issued from the dashboard. Format: `hs_...`" }
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "API key issued from the dashboard. Format: `hs_...`"
+      }
     },
     "schemas": {
       "AnalysisResult": {
         "type": "object",
-        "required": ["verdict", "confidence", "risk_timeline", "duration_sec", "model_version", "processed_at"],
+        "required": [
+          "verdict",
+          "confidence",
+          "risk_timeline",
+          "duration_sec",
+          "model_version",
+          "processed_at"
+        ],
         "properties": {
-          "verdict": { "type": "string", "enum": ["ai", "human", "uncertain"] },
-          "confidence": { "type": "number", "format": "float", "minimum": 0, "maximum": 1 },
-          "origin": { "type": "string", "nullable": true, "description": "Detected generator when AI (suno, udio, elevenlabs, etc.)" },
-          "origin_confidence": { "type": "number", "format": "float", "nullable": true, "minimum": 0, "maximum": 1 },
+          "verdict": {
+            "type": "string",
+            "enum": [
+              "ai",
+              "human",
+              "uncertain"
+            ]
+          },
+          "confidence": {
+            "type": "number",
+            "format": "float",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "origin": {
+            "type": "string",
+            "nullable": true,
+            "description": "Detected generator when AI (suno, udio, elevenlabs, etc.)"
+          },
+          "origin_confidence": {
+            "type": "number",
+            "format": "float",
+            "nullable": true,
+            "minimum": 0,
+            "maximum": 1
+          },
           "risk_timeline": {
             "type": "array",
-            "items": { "type": "number", "format": "float", "minimum": 0, "maximum": 1 },
+            "items": {
+              "type": "number",
+              "format": "float",
+              "minimum": 0,
+              "maximum": 1
+            },
             "description": "Per-window AI probability (~2.5s windows)"
           },
-          "duration_sec": { "type": "number", "format": "float" },
-          "model_version": { "type": "string" },
-          "processed_at": { "type": "string", "format": "date-time" },
+          "duration_sec": {
+            "type": "number",
+            "format": "float"
+          },
+          "model_version": {
+            "type": "string"
+          },
+          "processed_at": {
+            "type": "string",
+            "format": "date-time"
+          },
           "risk_segments": {
             "type": "array",
             "description": "Present only when ?detail=full",
             "items": {
               "type": "object",
               "properties": {
-                "start": { "type": "number" },
-                "end": { "type": "number" },
-                "risk": { "type": "number", "minimum": 0, "maximum": 1 }
+                "start": {
+                  "type": "number"
+                },
+                "end": {
+                  "type": "number"
+                },
+                "risk": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                }
               }
             }
           },
@@ -199,24 +487,67 @@
             "type": "object",
             "description": "Present only when ?detail=full. Each value uses the same ai/human/uncertain taxonomy as `verdict`.",
             "properties": {
-              "press_safe": { "type": "string", "enum": ["ai", "human", "uncertain"], "nullable": true },
-              "human_safe": { "type": "string", "enum": ["ai", "human", "uncertain"], "nullable": true },
-              "recall": { "type": "string", "enum": ["ai", "human", "uncertain"], "nullable": true }
+              "press_safe": {
+                "type": "string",
+                "enum": [
+                  "ai",
+                  "human",
+                  "uncertain"
+                ],
+                "nullable": true
+              },
+              "human_safe": {
+                "type": "string",
+                "enum": [
+                  "ai",
+                  "human",
+                  "uncertain"
+                ],
+                "nullable": true
+              },
+              "recall": {
+                "type": "string",
+                "enum": [
+                  "ai",
+                  "human",
+                  "uncertain"
+                ],
+                "nullable": true
+              }
             }
           }
         }
       },
       "BulkResultRecord": {
         "allOf": [
-          { "$ref": "#/components/schemas/AnalysisResult" },
+          {
+            "$ref": "#/components/schemas/AnalysisResult"
+          },
           {
             "type": "object",
-            "required": ["item_id"],
+            "required": [
+              "item_id"
+            ],
             "properties": {
-              "item_id": { "type": "string", "description": "Identifier you supplied at submit time" },
-              "status": { "type": "string", "enum": ["success", "failed"] },
-              "error": { "type": "string", "nullable": true },
-              "error_code": { "type": "string", "nullable": true }
+              "item_id": {
+                "type": "string",
+                "description": "Identifier you supplied at submit time"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "success",
+                  "failed"
+                ]
+              },
+              "error": {
+                "type": "string",
+                "nullable": true
+              },
+              "error_code": {
+                "type": "string",
+                "nullable": true
+              }
             }
           }
         ]
