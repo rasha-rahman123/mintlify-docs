@@ -264,7 +264,7 @@
     "/api/analyze/hybrid": {
       "post": {
         "summary": "Analyze a track (hybrid, premium 3x)",
-        "description": "Premium stem-aware analysis. Separates the recording and returns independent vocal and instrumental AI verdicts plus a derived track verdict. Billed at 3x credits. Heavier than /api/analyze.",
+        "description": "Premium stem-aware analysis. Returns independent vocal and instrumental AI verdicts plus an overall track verdict. Billed at 3x credits. Heavier than /api/analyze.",
         "requestBody": {
           "required": true,
           "description": "Send exactly one of `file` (multipart) or `url` (JSON).",
@@ -336,9 +336,6 @@
                                 "number",
                                 "null"
                               ]
-                            },
-                            "basis": {
-                              "type": "string"
                             }
                           }
                         },

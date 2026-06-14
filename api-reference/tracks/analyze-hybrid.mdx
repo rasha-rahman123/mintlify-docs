@@ -17,9 +17,9 @@ and the instrumental and analyzes each independently, so it is heavier than
 
 It returns **three independent verdicts**:
 
-- **`vocal`** — is the singing voice AI-generated or an AI voice clone?
-- **`instrumental`** — is the backing/production AI-generated?
-- **`track`** — the overall recording verdict, derived from the instrumental. An AI vocal clone sung over an *authentic* instrumental is an **authentic track with an AI vocal**, not an AI track.
+- **`vocal`** — is the vocal AI-generated?
+- **`instrumental`** — is the instrumental AI-generated?
+- **`track`** — the overall recording verdict.
 
 ## Request body
 
@@ -82,7 +82,7 @@ print(res["result"]["vocal"], res["result"]["instrumental"])
   "status": "complete",
   "billing": { "credits_charged": 3, "tier": "hybrid_3x" },
   "result": {
-    "track":        { "verdict": "human", "ai_score": 0.08, "basis": "instrumental" },
+    "track":        { "verdict": "human", "ai_score": 0.08 },
     "vocal":        { "verdict": "suspicious", "ai_score": 0.94, "fpr_tier": "0.01", "gated": false },
     "instrumental": { "verdict": "human", "ai_score": 0.08 }
   }
@@ -94,19 +94,18 @@ print(res["result"]["vocal"], res["result"]["instrumental"])
 | `status` | string | `complete` when verdicts are returned synchronously. |
 | `billing.credits_charged` | int | Credits consumed (3× the per-minute rate). |
 | `billing.tier` | string | Always `hybrid_3x`. |
-| `result.vocal.verdict` | `"suspicious"` \| `"human"` \| `"no_vocal"` | Vocal-stem verdict. `no_vocal` when no vocal is present (or too quiet to score). |
+| `result.vocal.verdict` | `"suspicious"` \| `"human"` \| `"no_vocal"` | Vocal verdict. `no_vocal` when no vocal is present (or too quiet to score). |
 | `result.vocal.ai_score` | float (0–1) \| null | AI probability for the vocal. |
 | `result.vocal.fpr_tier` | string \| null | Strictest false-positive-rate band the score clears (`0.001`…`0.05`). |
 | `result.vocal.gated` | bool | `true` when the vocal was absent/too quiet to score. |
-| `result.instrumental.verdict` | `"ai"` \| `"human"` \| `"suspicious"` | Instrumental-stem verdict. |
+| `result.instrumental.verdict` | `"ai"` \| `"human"` \| `"suspicious"` | Instrumental verdict. |
 | `result.instrumental.ai_score` | float (0–1) \| null | AI probability for the instrumental. |
-| `result.track.verdict` | string | Overall track verdict (derived from the instrumental). |
+| `result.track.verdict` | string | Overall recording verdict. |
 | `result.track.ai_score` | float (0–1) \| null | AI probability for the track. |
-| `result.track.basis` | string | What the track verdict is derived from (`instrumental`). |
 
 ## When to use this
 
-Use the hybrid endpoint when you need to know **which part** is synthetic — the
-classic case being an AI vocal clone over a genuine instrumental (an "AI cover"),
-which the full-mix `/api/analyze` reports only at the track level. See
-[Reading Results](/guides/reading-results) for interpreting per-stem verdicts.
+Use the hybrid endpoint when you need separate verdicts for the **vocal** and the
+**instrumental** rather than a single track-level verdict from the full mix
+(`/api/analyze`). See [Reading Results](/guides/reading-results) for interpreting
+the verdicts.
