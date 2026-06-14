@@ -80,6 +80,41 @@ If you need different operating points — e.g. a strict gate for press releases
 
 Each tier uses the same `ai` / `human` / `uncertain` taxonomy as top-level `verdict`. See [Confidence Tiers](/guides/confidence-tiers) for the false-positive rate at each tier.
 
+## Hybrid results
+
+The [hybrid endpoint](/api-reference/tracks/analyze-hybrid) returns three separate
+verdicts instead of one — for the **vocal**, the **instrumental**, and the
+**track** overall:
+
+```json
+{
+  "status": "complete",
+  "billing": { "credits_charged": 3, "tier": "hybrid_3x" },
+  "result": {
+    "track":        { "verdict": "human", "ai_score": 0.08 },
+    "vocal":        { "verdict": "suspicious", "ai_score": 0.94, "fpr_tier": "0.01", "gated": false },
+    "instrumental": { "verdict": "human", "ai_score": 0.08 }
+  }
+}
+```
+
+| Field | What it's for |
+|-------|--------------|
+| `vocal.verdict` | Vocal verdict — `"human"`, `"suspicious"`, or `"no_vocal"` (no vocal present, or too quiet to score) |
+| `vocal.ai_score` | AI probability for the vocal (0–1) |
+| `vocal.fpr_tier` | Strictest false-positive-rate band the vocal score clears (`0.001`…`0.05`); `null` below the loosest band |
+| `vocal.gated` | `true` when the vocal couldn't be scored (absent / too quiet) |
+| `instrumental.verdict` | Instrumental verdict — `"human"`, `"suspicious"`, or `"ai"` |
+| `instrumental.ai_score` | AI probability for the instrumental (0–1) |
+| `track.verdict` | Overall recording verdict |
+| `track.ai_score` | AI probability for the track (0–1) |
+
+Route on whichever verdict matters for your workflow. A common pattern is to gate
+on `vocal.verdict` and `instrumental.verdict` independently — e.g. send anything
+where either is `"suspicious"` to manual review — and fall back to `track.verdict`
+for a single overall decision. The `gated` flag means treat the vocal verdict as
+unavailable, not as `"human"`.
+
 ## Handling failures
 
 Bulk records may include a `status` field. On failure, `verdict` is absent and `error` / `error_code` describe what went wrong:
