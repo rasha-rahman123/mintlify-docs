@@ -10,9 +10,8 @@ POST /api/analyze/hybrid
 ```
 
 <Note>
-**Premium tier — billed at 3× credits.** The hybrid pipeline separates the
-recording (BS-Roformer) and runs two detectors: a vocal-specific head on the
-isolated vocal and the main detector on the instrumental. It is heavier than
+**Premium tier — billed at 3× credits.** The hybrid pipeline isolates the vocal
+and the instrumental and analyzes each independently, so it is heavier than
 [`/api/analyze`](/api-reference/tracks/analyze), which scores the full mix once.
 </Note>
 
