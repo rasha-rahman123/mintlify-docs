@@ -91,6 +91,46 @@ console.log(job.status); // "queued"
 ```
 </CodeGroup>
 
+## Hybrid (stem-aware) analysis
+
+Add `"options": { "hybrid": true }` to analyze each track at the **stem level** — the same premium analysis as [`/api/analyze/hybrid`](/api-reference/tracks/analyze-hybrid), at bulk scale. The track is separated into its vocal and instrumental, and each is judged independently.
+
+```json
+{
+  "name": "Catalog Scan (hybrid)",
+  "items": [
+    { "item_id": "track-001", "url": "https://cdn.example.com/01.mp3" }
+  ],
+  "options": { "hybrid": true }
+}
+```
+
+<Note>
+**Premium — billed at 3× credits per track.** Hybrid separates and scores two stems, so it is heavier than a standard scan. Use standard bulk jobs unless you specifically need per-stem verdicts.
+</Note>
+
+Each hybrid record returns three independent verdicts instead of one:
+
+```json
+{
+  "item_id": "track-001",
+  "analysis_type": "hybrid",
+  "verdict": "ai",
+  "track":        { "verdict": "ai",    "ai_score": 0.97, "origin": "suno", "origin_confidence": 0.82 },
+  "vocal":        { "verdict": "human", "ai_score": 0.04 },
+  "instrumental": { "verdict": "ai",    "ai_score": 0.97, "origin": "suno", "origin_confidence": 0.82 }
+}
+```
+
+| Field | Meaning |
+|-------|---------|
+| `verdict` | The headline (track-level) verdict — same as `track.verdict` |
+| `track` | The overall recording verdict |
+| `vocal` | Is the vocal AI-generated? (`verdict` is `"no_vocal"` when the track has no vocal stem) |
+| `instrumental` | Is the instrumental AI-generated? |
+
+This surfaces the cases a single verdict can't: an AI instrumental under a human vocal, or an AI vocal over a human production. `origin` is included on any stem judged AI when a generator can be attributed.
+
 ## Job status
 
 Poll or use webhooks to track progress:
