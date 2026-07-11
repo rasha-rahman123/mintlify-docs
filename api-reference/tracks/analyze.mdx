@@ -103,6 +103,16 @@ const job = await fetch("https://app.jobsbyhumans.com/api/analyze", {
   "origin": "suno",
   "origin_confidence": 0.82,
   "risk_timeline": [0.12, 0.14, 0.88, 0.91, 0.89, 0.87],
+  "origin_map_evidence": "https://firebasestorage.googleapis.com/v0/b/…/o/origin_maps%2F<hash>.png?alt=media&token=…",
+  "origin_map": {
+    "nearest_population": "Suno",
+    "summary_line": "24 of its 25 nearest reference recordings are Suno generations.",
+    "neighborhood": {
+      "k": 25,
+      "dominant": true,
+      "counts": { "Suno": 24, "Udio": 1 }
+    }
+  },
   "duration_sec": 187.4,
   "model_version": "2026-04-29",
   "processed_at": "2026-04-29T10:43:01Z"
@@ -116,6 +126,8 @@ const job = await fetch("https://app.jobsbyhumans.com/api/analyze", {
 | `origin` | string \| null | Detected generator (e.g. `suno`, `udio`) when AI |
 | `origin_confidence` | float (0–1) \| null | Confidence in the origin attribution |
 | `risk_timeline` | float[] | Per-window AI probability (~2.5s windows) |
+| `origin_map_evidence` | string (URL) \| absent | Permanent image URL of the **similarity map** — a visual placement of the recording among reference populations (Human, Suno, Udio, ElevenLabs, Lyria, Treblo). Shareable evidence you can embed or cite. |
+| `origin_map` | object \| absent | Structured form of the similarity map: `nearest_population` (closest reference cluster), `summary_line` (plain-language neighborhood statement), and `neighborhood` (the k-nearest reference recordings by population). |
 | `duration_sec` | float | Audio duration in seconds |
 | `model_version` | string | Detector calibration version |
 | `processed_at` | string (ISO 8601 UTC) | When analysis completed |
@@ -139,5 +151,24 @@ Adding `?detail=full` extends the response with two blocks:
 ```
 
 `risk_segments` gives per-window AI probability with timestamps. `tier_verdicts` gives three operating points (strict / default / lenient), each using the same `ai` / `human` / `uncertain` taxonomy as the top-level `verdict`.
+
+## Similarity map
+
+Every analysis places the recording on a **similarity map** against reference
+populations — verified human recordings and known AI generators (Suno, Udio,
+ElevenLabs, Lyria, Treblo). This is visual, citable evidence for *where* a
+track sits, alongside the verdict for *whether* it is AI.
+
+- **`origin_map_evidence`** is a permanent image URL you can embed, share, or
+  attach to a report. It shows the reference populations as distinct regions
+  with the analyzed track pinned among its nearest neighbors.
+- **`origin_map`** is the same evidence as structured data: the
+  `nearest_population`, a plain-language `summary_line`
+  (e.g. *"24 of its 25 nearest reference recordings are Suno generations"*),
+  and the full `neighborhood` breakdown.
+
+The map is neighborhood evidence, not a standalone verdict — the `verdict`
+field remains the authoritative call. Positions reflect overall audio
+similarity to each reference population.
 
 See [Reading Results](/guides/reading-results) for guidance on interpreting these fields.

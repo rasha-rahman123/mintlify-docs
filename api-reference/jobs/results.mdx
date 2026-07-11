@@ -59,8 +59,8 @@ for (const line of text.trim().split("\n")) {
 Each line is one record:
 
 ```json
-{"item_id":"track-001","verdict":"human","confidence":0.62,"origin":"human","origin_confidence":null,"risk_timeline":[0.04,0.07,0.05],"duration_sec":214.0,"model_version":"2026-04-29","processed_at":"2026-04-29T10:43:01Z"}
-{"item_id":"track-002","verdict":"ai","confidence":0.91,"origin":"suno","origin_confidence":0.82,"risk_timeline":[0.88,0.93,0.91],"duration_sec":187.4,"model_version":"2026-04-29","processed_at":"2026-04-29T10:43:04Z"}
+{"item_id":"track-001","verdict":"human","confidence":0.62,"origin":"human","origin_confidence":null,"risk_timeline":[0.04,0.07,0.05],"origin_map_evidence":"https://firebasestorage.googleapis.com/…/origin_maps%2F<hash>.png?alt=media&token=…","origin_map":{"nearest_population":"Human","summary_line":"22 of its 25 nearest reference recordings are verified human recordings.","neighborhood":{"k":25,"dominant":true,"counts":{"Human":22,"Udio":3}}},"duration_sec":214.0,"model_version":"2026-04-29","processed_at":"2026-04-29T10:43:01Z"}
+{"item_id":"track-002","verdict":"ai","confidence":0.91,"origin":"suno","origin_confidence":0.82,"risk_timeline":[0.88,0.93,0.91],"origin_map_evidence":"https://firebasestorage.googleapis.com/…/origin_maps%2F<hash>.png?alt=media&token=…","origin_map":{"nearest_population":"Suno","summary_line":"24 of its 25 nearest reference recordings are Suno generations.","neighborhood":{"k":25,"dominant":true,"counts":{"Suno":24,"Udio":1}}},"duration_sec":187.4,"model_version":"2026-04-29","processed_at":"2026-04-29T10:43:04Z"}
 ```
 
 | Field | Type | Description |
@@ -71,6 +71,8 @@ Each line is one record:
 | `origin` | string \| null | Detected generator when AI |
 | `origin_confidence` | float (0–1) \| null | Confidence in origin attribution |
 | `risk_timeline` | float[] | Per-window AI probability |
+| `origin_map_evidence` | string (URL) \| absent | Permanent image URL of the similarity map (see [Analyze](/api-reference/tracks/analyze#response)). |
+| `origin_map` | object \| absent | Structured similarity map: `nearest_population`, `summary_line`, `neighborhood`. |
 | `duration_sec` | float | Audio duration in seconds |
 | `model_version` | string | Detector calibration version |
 | `processed_at` | string (ISO 8601 UTC) | When analysis completed |
