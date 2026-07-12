@@ -128,8 +128,10 @@ const job = await fetch("https://app.jobsbyhumans.com/api/analyze", {
 | `risk_timeline` | float[] | Per-window AI probability (~2.5s windows) |
 | `origin_map_evidence` | string (URL) \| absent | Permanent image URL of the **similarity map** — a visual placement of the recording among reference populations (Human, Suno, Udio, ElevenLabs, Lyria, Treblo). Shareable evidence you can embed or cite. |
 | `origin_map` | object \| absent | Structured form of the similarity map: `nearest_population` (closest reference cluster), `summary_line` (plain-language neighborhood statement), and `neighborhood` (the k-nearest reference recordings by population). |
-| `headline_verdict` | `"fully_generated"` \| `"ai_assisted"` \| `"human"` | Three-tier display verdict. `fully_generated` mirrors a positive `verdict`. `ai_assisted` means the recording did not meet full-generation certification confidence, but independent signals — similarity-map attribution to a known generator plus elevated detection — indicate AI-generated components under professional production (e.g. a cloned vocal or generated instrumental in a human-mixed release). Use this as the display verdict. |
-| `assist` | object \| absent | Present when `headline_verdict` is `ai_assisted`: `attribution` (the reference population, e.g. `"Treblo"`), `signals` (which lanes corroborated), and `line` (a plain-language explanation suitable for display). |
+| `headline_verdict` | `"ai_generated"` \| `"ai_generated_suspected"` \| `"human"` | Display verdict aligned to the IFPI/RIAA GenAI labeling standard (see below). |
+| `industry_label` | `"AI-Generated"` \| absent | The recommended track-level label under the July 2026 IFPI/RIAA/A2IM/WIN/IMPALA GenAI labeling standard. |
+| `industry_label_status` | `"meets_definition"` \| `"suspected"` \| absent | Whether the recording meets the label definition at certification confidence, or is suspected on corroborated evidence (stem verification recommended). |
+| `assist` | object \| absent | Present when `headline_verdict` is `ai_generated_suspected`: `attribution` (the reference population, e.g. `"Treblo"`), `signals` (which lanes corroborated), and `line` (a display-ready explanation). |
 | `duration_sec` | float | Audio duration in seconds |
 | `model_version` | string | Detector calibration version |
 | `processed_at` | string (ISO 8601 UTC) | When analysis completed |
@@ -154,26 +156,39 @@ Adding `?detail=full` extends the response with two blocks:
 
 `risk_segments` gives per-window AI probability with timestamps. `tier_verdicts` gives three operating points (strict / default / lenient), each using the same `ai` / `human` / `uncertain` taxonomy as the top-level `verdict`.
 
-## Three-tier headline verdict
+## Industry labels (IFPI/RIAA GenAI labeling standard)
 
-`verdict` answers one question at certification confidence: *is this recording
-fully AI-generated?* Some commercially released tracks don't meet that bar yet
-clearly contain AI — a cloned vocal or a generated instrumental inside a
-professionally mixed release. Mixing and mastering can mask at the full-track
-level what component analysis reveals.
+In July 2026, IFPI, RIAA, A2IM, WIN, IMPALA and partners announced a unified
+track-level labeling standard distinguishing **AI-Generated** from
+**AI-Assisted** recordings. Our verdicts map onto those definitions:
 
-`headline_verdict` composes both:
+- **AI-Generated** — generative AI produced the entirety or the *primary
+  portion* of the recording's creative elements. The standard's own examples:
+  an AI lead vocal performance, an AI key instrumental performance, or an
+  entirely prompt-generated track. Note this includes recordings with
+  substantial human production: an AI lead vocal over a human instrumental
+  qualifies as AI-Generated.
+- **AI-Assisted** — created substantially by humans (human lead vocal and
+  primary instruments), with generative AI used for some expressive elements.
 
-- **`fully_generated`** — met certification confidence. Same event as `verdict`.
-- **`ai_assisted`** — certification declined, but the similarity map attributes
-  the recording to a known generator population *and* detection signals are
-  elevated. The `assist` object carries the attribution and a display-ready
-  explanation.
-- **`human`** — nothing fired.
+`headline_verdict` values:
 
-Escalation is conservative by design: attribution is the anchor and detection
-is the corroboration, so a recording whose similarity neighborhood is human
-never escalates regardless of signal noise.
+- **`ai_generated`** — meets the AI-Generated definition at certification
+  confidence. `industry_label` is `AI-Generated` with status `meets_definition`.
+- **`ai_generated_suspected`** — certification declined, but similarity-map
+  attribution to a known generator plus elevated detection signals indicate
+  AI-generated primary elements (e.g. a cloned lead vocal under professional
+  production). `industry_label` is `AI-Generated` with status `suspected`;
+  stem-level verification is recommended to confirm. Escalation is
+  conservative: a recording whose similarity neighborhood is human never
+  escalates.
+- **`human`** — nothing fired; no label recommended.
+
+Hybrid (stem-level) analysis maps its findings onto the definition's own
+examples and reports `industry_label_basis` (e.g. `"AI lead vocal
+performance"`). The labeling program is voluntary and self-declared — these
+fields exist so platforms and rights-holders can verify declarations against
+the standard's definitions.
 
 ## Similarity map
 
