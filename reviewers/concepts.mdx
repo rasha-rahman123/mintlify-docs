@@ -1,0 +1,48 @@
+---
+title: Concepts behind the fields
+description: The vocabulary of the tracks themselves and of detection error — what the fields are measuring.
+---
+
+## Fully generative vs. hybrid
+
+A fully generative track is created end-to-end by a generator from a prompt — vocals, instruments, and mix all synthetic. A hybrid mixes human and AI elements, most commonly an AI vocal over a human instrumental.
+
+Fully generative tracks usually fire on the full mix, because every part carries generation artifacts. Hybrids are the hard case and the reason per-stem analysis exists: the AI part of a hybrid can be a fraction of the audio, invisible to a whole-track average. The two produce visibly different results — basis `["full_mix"]` versus basis `["vocal"]` with a human [mix verdict](/reviewers/result-fields#mix-verdict).
+
+## AI vocals: synthetic & converted
+
+A synthetic vocal is generated outright. A voice conversion takes a real human performance and transforms its timbre into another voice — human timing and phrasing, synthetic sound.
+
+Both count as AI vocals under the labeling standard. Conversions are the subtler listen: because the underlying performance is real, the synthetic character can surface only in moments — a tone that drifts toward the original voice mid-phrase. The [risk timeline](/reviewers/result-fields#risk-timeline) tells a reviewer where those moments are.
+
+## Generator
+
+A specific AI music service or model — Suno, Udio, Lyria, Treblo, Mureka, MusicGen, ElevenLabs. Each leaves a recognizably different acoustic signature, which is what makes origin attribution possible.
+
+New generators appear continually. A track from one without an attribution reference still gets caught as AI; its origin simply reads `unknown` until a reference exists.
+
+## False positives & false negatives
+
+A false positive wrongly flags a human track as AI — the costliest error, because it accuses a real artist. A false negative lets an AI track through as human — costly downstream, when a streaming platform's own detection catches what was delivered to them.
+
+The false-positive rate at each threshold is measured, not guessed: "one human track in a hundred" at the standard bar. No detector has zero of either error, which is why a person verifies every finding before it reaches an artist, and why catalogs get rescanned as engines improve.
+
+## Genre blind spots
+
+Detection error concentrates in specific genres and production styles rather than spreading evenly. Heavily produced, loudness-maximized styles are historically the hardest human material, because polish resembles the uniformity of generated audio.
+
+Which genres run hot changes with every engine version, as training targets known gaps. This is why reporting the genre of every disputed flag matters: a review team that says "this flag was wrong, and the track is amapiano" is directly commissioning the fix.
+
+<Tip>
+**For reviewers** — when a flag lands on a genre known to run hot, weigh it accordingly, and send it back with the genre attached. That report is the retraining signal.
+</Tip>
+
+## The 2026 labeling standard
+
+An industry agreement — RIAA, IFPI, A2IM, WIN, IMPALA and partners — defining when a recording is labeled AI-Generated versus AI-Assisted.
+
+Its least intuitive rule is the one reviewers need most: a recording is AI-Generated when generative AI produced the entirety or the primary portion of its creative elements, and an AI lead vocal counts as a primary portion on its own. AI-Assisted is narrower than everyday usage — it requires a human lead vocal and human primary instruments, with AI only in secondary elements. A cloned voice over a human beat is AI-Generated under the standard, not AI-Assisted.
+
+<Note>
+Edge cases are still being clarified by the standard's authors.
+</Note>

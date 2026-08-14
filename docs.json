@@ -53,6 +53,20 @@
         ]
       },
       {
+        "tab": "For Reviewers",
+        "groups": [
+          {
+            "group": "Field Glossary",
+            "pages": [
+              "reviewers/overview",
+              "reviewers/result-fields",
+              "reviewers/concepts",
+              "reviewers/talking-to-artists"
+            ]
+          }
+        ]
+      },
+      {
         "tab": "API Reference",
         "groups": [
           {

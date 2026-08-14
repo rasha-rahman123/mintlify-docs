@@ -1,0 +1,58 @@
+---
+title: Field Glossary
+description: Every field in a scan result, what it means in plain language, and the words a reviewer can put in front of an artist.
+---
+
+For content-operations teams reviewing AI detections. Detection surfaces and explains; *you* verify and decide.
+
+Terms are current to engine `hsv-1.x`, with labeling per the IFPI/RIAA standard adopted July 2026.
+
+<CardGroup cols={3}>
+  <Card title="The result, field by field" icon="list-tree" href="/reviewers/result-fields">
+    Every field a full scan returns, in the order it appears.
+  </Card>
+  <Card title="Concepts behind the fields" icon="book-open" href="/reviewers/concepts">
+    Hybrids, voice conversion, generators, and detection error.
+  </Card>
+  <Card title="Talking to artists" icon="messages" href="/reviewers/talking-to-artists">
+    The four situations a reviewer faces, with language ready to adapt.
+  </Card>
+</CardGroup>
+
+## A full result
+
+One track, exactly as the API returns it. Every field is explained in [The result, field by field](/reviewers/result-fields).
+
+```json Ultra scan result
+{
+  "item_id": "track-001",
+  "analysis_type": "full",
+  "verdict": "ai",                                        // the recording-level call
+  "verdict_basis": ["vocal"],                             // what fired: the isolated vocal
+  "mix_verdict": "human",                                 // the whole mix on its own — a hybrid
+  "confidence": 0.86,
+  "industry_label": "ai_generated",
+  "industry_label_status": "meets_definition",
+  "industry_label_basis": ["AI lead vocal performance"],  // quotable as-is
+  "origin": "suno",
+  "origin_confidence": 0.71,
+  "origin_map_evidence": "https://…/track-001-map.png",
+  "stems": {
+    "vocal": {
+      "verdict": "ai", "ai_score": 0.98, "fpr_tier": "0.01",
+      "tier_verdicts": { "press_safe": null, "human_safe": "ai", "recall": "ai" }
+    },
+    "instrumental": {
+      "verdict": "human", "ai_score": 0.11,
+      "tier_verdicts": { "press_safe": "human", "human_safe": "human", "recall": "ai" }
+    }
+  },
+  "tier_verdicts": { "press_safe": "human", "human_safe": "human", "recall": "ai" },
+  "risk_timeline": [0.0, 0.0, 0.9, 0.88],                 // where in the track to listen
+  "duration_sec": 210.4,
+  "model_version": "hsv-1.0.0",                           // which engine produced this scan
+  "processed_at": "2026-07-21T04:15:00Z"
+}
+```
+
+Reading this one in a sentence: the whole mix sounds human, but the isolated vocal is called AI at a strict threshold — so the recording is labeled AI-Generated on the basis of an AI lead vocal, with the risky region in the second half of the track.

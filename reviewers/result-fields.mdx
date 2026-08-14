@@ -1,0 +1,161 @@
+---
+title: The result, field by field
+description: Every field a full scan returns, in the order it appears.
+---
+
+A full scan result for one track, exactly as the API returns it. See [the annotated payload](/reviewers/overview#a-full-result) for the shape these fields sit in.
+
+## Verdict
+
+<ParamField path="verdict" type="string" />
+
+The system's overall call on the recording, already accounting for every stem. This is the decision field — everything after it explains why.
+
+| Value | Meaning |
+|-------|---------|
+| `"ai"` | At least one signal — the full mix or either stem — met its calibrated bar for AI. |
+| `"human"` | Every signal present positively cleared as human. |
+| `"uncertain"` | Nothing met the AI bar, but something also failed to clear as human. Route to review; treat as neither. |
+
+<Tip>
+**Say to the artist** — "Our screening flagged this track as containing AI-generated audio. I can walk you through exactly what was detected and where."
+</Tip>
+
+## Verdict basis
+
+<ParamField path="verdict_basis" type="string[]" />
+
+Which signal drove the AI call: `vocal`, `instrumental`, `full_mix`, or several. This field turns a verdict into an explanation.
+
+`["vocal"]` means the isolated voice fired while everything else read clean — the AI-vocal-over-human-track case. `["full_mix"]` means the recording as a whole carries generated character. Absent on human and uncertain verdicts, because nothing fired.
+
+<Tip>
+**Say to the artist** — "The detection is specific to the lead vocal — the instrumental reads as human-made." Substitute whichever basis actually fired; naming the part shows the finding is targeted, and gives the artist something concrete to respond to.
+</Tip>
+
+## Mix verdict
+
+<ParamField path="mix_verdict" type="string" />
+
+What the full, unseparated mix read on its own. When this says `human` while the verdict says `ai`, you are looking at a hybrid — that disagreement is the signature, not an error.
+
+A whole-track scan averages: three minutes of human instrumental can drown a synthetic vocal. Stem separation exists precisely so the AI part cannot hide in the average.
+
+## Confidence
+
+<ParamField path="confidence" type="number" />
+
+How emphatic the evidence behind this verdict is, from 0 to 1 — where 0.5 is a coin flip. It is not a percentage chance the track is AI.
+
+A human verdict at 0.96 expresses strong confidence in human. When a stem drove the verdict, confidence describes that stem's evidence, not the mix's.
+
+<Warning>
+Resist re-thresholding on this number: the verdict already sits on calibrated cut-offs with a measured false-positive rate, and drawing your own line discards that guarantee.
+</Warning>
+
+<Tip>
+**Say to the artist** — never quote confidence as "you're 86% AI." If asked, say: "The system reports how strong the evidence was for its call — this one was a confident detection, not a borderline one."
+</Tip>
+
+## Industry label, status & basis
+
+<ParamField path="industry_label, industry_label_status, industry_label_basis" type="string, string, string[]" />
+
+The 2026 IFPI/RIAA standard's label, derived from the same evidence as the verdict — so the two can never disagree. Present only on an AI finding.
+
+| `industry_label_status` | Meaning |
+|-------------------------|---------|
+| `"meets_definition"` | Detection met its certification bar; the recording qualifies for the AI-Generated label as a finding. |
+| `"suspected"` | Evidence leans AI but sits below the certification bar. A routing key for human review — not something to relay to an artist yet. |
+
+`industry_label_basis` is the plain-language reason — "AI lead vocal performance" — written to be quoted directly in artist communication and DSP metadata alike.
+
+<Tip>
+**Say to the artist** — "Under the industry labeling standard adopted in 2026, a recording with an AI lead vocal is classified as AI-Generated even when the instrumental is human-made."
+</Tip>
+
+## Origin & origin confidence
+
+<ParamField path="origin, origin_confidence" type="string, number" />
+
+Which generator the recording most resembles — `suno`, `udio`, `treblo`, and so on — with a 0-to-1 score for how decisively it sits in that generator's reference population.
+
+| Value | Meaning |
+|-------|---------|
+| `"suno"` … | A named attribution: the track sits clearly inside a known generator's reference population. |
+| `"unknown"` | Flagged AI, but resembling no generator on file — typically a model without an attribution reference yet, or a voice-conversion case. Common and expected; new generators launch monthly. |
+| `"uncertain"` | The comparison spread across several populations with no clear winner. No attribution claimed. |
+
+Origin is computed on the full mix, and it answers a different question than the verdict — "what does this resemble," not "is this AI." On hybrids the mix is dominated by human material, so an AI verdict with no named origin is information, not malfunction.
+
+<Tip>
+**Say to the artist** — "The audio characteristics match tracks generated with [Suno]." When origin is unknown: "The detection is confident, though the specific generation tool wasn't identified."
+</Tip>
+
+## Origin map evidence
+
+<ParamField path="origin_map_evidence" type="string (url)" />
+
+A rendered image placing this track among reference populations of known generators and verified human recordings — the visual version of the attribution, suitable for a review file or an artist conversation.
+
+The underlying evidence counts nearest reference recordings: "23 of its 25 nearest references are Suno generations" is the plain-language reading. That neighborhood evidence is reported even when the headline origin declines to name a generator.
+
+## Stems: verdict & ai_score
+
+<ParamField path="stems.vocal, stems.instrumental" type="object" />
+
+The isolated vocal and the vocal-removed instrumental, each scored independently. Per-stem verdicts are what make hybrid detection possible.
+
+`ai_score` is that stem's calibrated score from 0 to 1 — high means AI-like, low means human-like, and the same caution applies as with confidence: it is evidence strength against measured thresholds, not "percent AI."
+
+A vocal stem can also read `no_vocal`: the track is instrumental, there was no voice to judge, and that is a complete answer rather than missing data.
+
+<Tip>
+**Say to the artist** — "We analyzed the vocal and the instrumental separately. The vocal is what triggered the detection; the instrumental came back clean."
+</Tip>
+
+## FPR tier
+
+<ParamField path="fpr_tier" type="string | null" />
+
+The strictest false-positive band this stem's score cleared: `"0.001"`, `"0.005"`, `"0.01"`, or `"0.05"` — read as "at a setting that wrongly flags at most this fraction of human tracks, this stem still reads AI."
+
+A vocal at `"0.01"` cleared a bar calibrated to flag at most one human vocal in a hundred. Smaller is stronger. Null means the score cleared no band — whatever suspicion exists sits below every calibrated setting.
+
+## Tier verdicts
+
+<ParamField path="tier_verdicts" type="object" />
+
+The same evidence read at three strictness settings — reported per stem and for the whole recording, so you can see how close every call was without rescanning.
+
+| Tier | What it means |
+|------|---------------|
+| `press_safe` | The strictest bar; a false positive here is rarest. For claims that must survive public scrutiny. Null when a signal has no operating point this strict — the vocal stem never does. |
+| `human_safe` | The standard bar, calibrated to wrongly flag roughly one human track in a hundred. |
+| `recall` | The loosest bar; catches the most AI and raises the most false alarms. On its own it marks a track worth an extra listen before anything else happens. |
+
+Read them as a ladder. All three agreeing is a strong signal either way. The ladder splitting — `recall: "ai"` under `human_safe: "human"` — is the shape of a borderline signal, and exactly the context to weigh before contacting anyone. The top-level verdict remains the decision; tiers show how close it was.
+
+## Risk timeline
+
+<ParamField path="risk_timeline" type="number[]" />
+
+Per-moment AI risk across the track, in order. In the example — `[0.0, 0.0, 0.9, 0.88]` — the first half is quiet and the risk concentrates in the second half: that is where a reviewer should listen first.
+
+<Tip>
+**Say to the artist** — "The detection localizes to a specific section of the track — starting around the midpoint — rather than the whole recording."
+</Tip>
+
+## Model version & rescan
+
+<ParamField path="model_version" type="string | null" />
+
+Which engine version produced this scan, as a string like `hsv-1.0.0`. A verdict is a statement by a particular engine at a particular time.
+
+Engines improve continuously, and precisely in the places earlier versions were weak. Compare stored scans against the live version (`GET /bulk/model-version`) and rescan where they differ — prioritizing catalog that has not shipped to DSPs. A null here means the scan predates versioned engines and is the first candidate for a rescan.
+
+## Identity & housekeeping
+
+<ParamField path="item_id, analysis_type, duration_sec, processed_at" type="string, string, number, string" />
+
+Your identifier for the track, echoed back; `"full"` marks an ultra scan with per-stem analysis; track length in seconds; and when the scan ran, in UTC.

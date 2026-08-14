@@ -1,0 +1,48 @@
+---
+title: Talking to artists
+description: The four situations a reviewer actually faces, with language ready to adapt.
+---
+
+Listen before you send any of these — the finding is yours to verify first.
+
+## A fully generative catch
+
+**When you see** — `verdict: ai` · `basis: ["full_mix"]` · `origin: suno (0.9+)`
+
+> "Our content review flagged this track as AI-generated. The detection covers the full recording, and the audio characteristics match tracks produced with Suno. Under the 2026 industry labeling standard we're required to classify it as AI-Generated before distribution. If you used a generation tool, letting us know which one resolves this quickest — and if you believe this is an error, tell us and we'll escalate it for expert review."
+
+Confident origin plus a full-mix basis is the strongest evidence shape there is. Still offer the dispute path — that offer costs nothing and is the fastest way to surface a true false positive.
+
+## An AI vocal on a human track
+
+**When you see** — `verdict: ai` · `basis: ["vocal"]` · `mix_verdict: human`
+
+> "We analyzed the vocal and the instrumental separately. The instrumental reads as human-made — the detection is specific to the lead vocal, which shows the characteristics of an AI-generated or AI-converted voice. Under the industry standard, an AI lead vocal classifies the whole recording as AI-Generated even when everything else is human. If the vocal came from a cloning or conversion tool, or if a session vocalist delivered files you didn't produce yourself, walk us through how it was recorded and we'll review from there."
+
+The last sentence matters: artists sometimes receive AI vocals unknowingly from collaborators. Leaving room for that possibility keeps a true finding from becoming a false accusation of intent.
+
+## A suspected label — review first
+
+**When you see** — `industry_label_status: "suspected"`, or a split tier ladder
+
+Nothing goes to the artist yet. Internally:
+
+> "Below certification but elevated — assign for listening, starting at the risk-timeline peak. Compare against the artist's other uploads on the release before any outreach."
+
+<Warning>
+"Suspected" is a routing key, not a finding. Contacting an artist on a suspected label alone converts a maybe into an accusation you cannot yet support. The same restraint applies when only the `recall` tier fired.
+</Warning>
+
+## The artist disputes the finding
+
+**When you see** — any AI verdict, and the artist says no AI was used
+
+> "Thanks for coming back to us — we take disputes seriously, and detection systems do have a measured error rate. Two things will resolve this: tell us how the track was recorded and produced (tools, sessions, collaborators), and we'll escalate the audio for expert human review in parallel. If our review confirms the track is human-made, we'll clear it, and your report makes the screening better for the genre you work in."
+
+Every dispute is either a false positive worth catching or a confirmation worth documenting — both outcomes have value. Log the genre either way; disputed flags cluster in the styles the engine finds hardest, and that report is what fixes them. When the engine version advances, rescan disputed tracks first.
+
+## The disclosure principle
+
+The cleanest resolution to any flag is the artist stating what tools they used — their answer plus the standard's definitions determines the label, and it outranks any scan.
+
+Detection exists for the undisclosed case. Frame every artist conversation as an invitation to disclose rather than a verdict to accept, and feed confirmed answers back as ground truth — that is how the next engine version gets better.
